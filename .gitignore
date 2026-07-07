@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments and local secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# IDE and OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Generated data and experiment artifacts
+data/
+outputs/
+runs/
+*.npz
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.npy
+
+# Large archives
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+
+# Keep source/config/docs trackable even if generated artifacts are ignored.
+!requirements.txt
+!README.md
+!PROJECT.md
+!ARCHITECTURE_EXPERIMENTS.md
