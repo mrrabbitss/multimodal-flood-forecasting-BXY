@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from .dataset import FloodSequenceDataset
+from .data.schemas import depth_scale_from_checkpoint
+from .dataset import FloodSequenceDataset, channel_names_from_checkpoint
 from .model import ConvLSTMForecastNet
 from .utils import ensure_dir, list_npz_files, set_seed
 
@@ -54,12 +55,20 @@ def main() -> None:
     ckpt = torch.load(args.checkpoint, map_location=device)
     input_len = int(ckpt["input_len"])
     lead_time = int(ckpt["lead_time"])
+    depth_scale = depth_scale_from_checkpoint(ckpt)
+    channel_names = channel_names_from_checkpoint(ckpt)
     split_seed = ckpt.get("split_seed", args.seed)
     shuffle_split = bool(ckpt.get("shuffle_split", False))
 
     files = [p for p in list_npz_files(args.fused_dir) if p.name.startswith("event_")]
     _, _, test_idx = FloodSequenceDataset.split_indices(len(files), seed=split_seed, shuffle=shuffle_split)
-    ds = FloodSequenceDataset(args.fused_dir, test_idx, input_len=input_len, lead_time=lead_time)
+    ds = FloodSequenceDataset(
+        args.fused_dir,
+        test_idx,
+        input_len=input_len,
+        lead_time=lead_time,
+        channel_names=channel_names,
+    )
     sample_idx = min(max(args.sample_idx, 0), len(ds) - 1)
     x, y = ds[sample_idx]
 
@@ -68,17 +77,19 @@ def main() -> None:
         hidden_channels=ckpt["hidden_channels"],
         num_layers=int(ckpt.get("num_layers", 1)),
         dropout=float(ckpt.get("dropout", 0.0)),
-        output_max=float(ckpt.get("output_max", 1.0)),
+        output_max=depth_scale.max_value,
         residual_scale=float(ckpt.get("residual_scale", 0.35)),
         use_residual=bool(ckpt.get("use_residual", False)),
+        fused_channel=int(ckpt.get("fused_channel", channel_names.index("fused_depth") if "fused_depth" in channel_names else -1)),
     ).to(device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
     with torch.no_grad():
         pred = model(x[None].to(device)).cpu().numpy()[0, 0]
 
-    # Channel 4 is fused_depth by construction.
-    current_fused = x[-1, 4].numpy()
+    if "fused_depth" not in channel_names:
+        raise ValueError("Prediction visualization requires the fused_depth input channel")
+    current_fused = x[-1, channel_names.index("fused_depth")].numpy()
     target = y[0].numpy()
     crop = max(0, min(int(args.crop_border), (min(pred.shape) - 1) // 2))
     if crop > 0:
@@ -88,7 +99,13 @@ def main() -> None:
         target = target[view]
     fig_dir = ensure_dir(Path(args.output_dir) / "figures")
     out_path = fig_dir / "prediction_triplet.png"
-    plot_triplet(pred, target, current_fused, out_path, title=f"Lead time = {lead_time} min")
+    plot_triplet(
+        pred,
+        target,
+        current_fused,
+        out_path,
+        title=f"Lead time = {lead_time} min | depth unit = {depth_scale.unit}",
+    )
     print(f"Saved visualization: {out_path}")
 
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import torch
 from torch import nn
 
+from .data.schemas import DEFAULT_DEPTH_SCALE
+
 
 class ConvLSTMCell(nn.Module):
     def __init__(self, input_channels: int, hidden_channels: int, kernel_size: int = 3) -> None:
@@ -50,7 +52,7 @@ class ConvLSTMForecastNet(nn.Module):
         kernel_size: int = 3,
         num_layers: int = 1,
         dropout: float = 0.0,
-        output_max: float = 1.0,
+        output_max: float = DEFAULT_DEPTH_SCALE.max_value,
         residual_scale: float = 0.35,
         use_residual: bool = False,
         fused_channel: int = 4,

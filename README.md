@@ -11,13 +11,14 @@ architecture attempts are included for comparison:
 - **Conv-LSTM + Attention**
 - **CNN-Temporal Transformer**
 
-The main takeaway is clear: on the current 60-event benchmark split, the
-original Conv-LSTM is still the strongest and most deployable model.
+The main takeaway is limited to this synthetic benchmark: on the current
+60-event split, the original Conv-LSTM is the strongest of the tested models.
 
 ## Result Snapshot
 
-All model rows use the same fused dataset, split seed `44`, test events, and
-risk threshold `0.28`.
+All model rows are historical legacy-schema results using the same synthetic
+fused dataset, split seed `44`, test events, and risk threshold `0.28`
+`normalized_depth`. The threshold is not a physical value such as centimeters.
 
 | Model | MAE | RMSE | CSI | F1 | FAR | Latency ms/sample | Peak CUDA MB |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -48,8 +49,9 @@ Conv-LSTM on this benchmark:
 
 - Conv-LSTM + Attention adds temporal weighting, but increases memory and does
   not improve CSI.
-- CNN-Temporal Transformer is a stronger architectural departure, but it is
-  slower and has a higher false-alarm ratio on this split.
+- This particular CNN-Temporal Transformer configuration is slower and has a
+  higher false-alarm ratio on this split. This result is not a general claim
+  that Transformer models are inferior.
 
 ## Baseline Comparison
 
@@ -108,6 +110,29 @@ flowchart LR
     F --> H["Latency and GPU memory comparison"]
 ```
 
+## Trustworthiness Upgrade
+
+The first engineering-hardening batch is implemented with backward
+compatibility:
+
+- One `DepthScale` controls synthetic labels, model output, checkpoints,
+  metrics, and visualization. New runs use `[0.0, 1.2] normalized_depth`.
+- Risk thresholds are saved with unit and meaning metadata.
+- Aligned satellite and GIS values no longer decay twice. `legacy` value decay
+  remains available for reproducibility.
+- Social reports now include local observation, count, confidence, and age
+  maps, so a valid zero-depth report differs from no observation.
+- The current 19-channel schema includes `miss_gis`, `dt_gis`, all `q_*`
+  fields, and the social observation mask.
+- Training and validation use the same loss configuration and save each loss
+  component.
+- The realtime pipeline fails fast when an input selects a future timestamp.
+
+Historical 13-channel checkpoints remain loadable. The preserved Conv-LSTM
+checkpoint was re-evaluated through the compatibility path at threshold `0.28`
+and reproduced `MAE=0.0547086`, `RMSE=0.0714920`, `CSI=0.9370353`, and
+`F1=0.9674943`.
+
 ## Data Design
 
 Each synthetic event starts from a hidden ground-truth water-depth field
@@ -119,9 +144,9 @@ noise, delay, and missingness:
 | Meteorology | `meteo_depth` | High-frequency estimated water depth |
 | Remote sensing | `sat_base` | Low-frequency satellite flood/wet-area proxy |
 | GIS risk | `gis_risk` | Static background risk map |
-| Social reports | `soc_depth` | Sparse crowdsourced depth reports |
+| Social reports | `soc_depth`, `soc_observation_mask`, `soc_count_map` | Spatially aggregated crowdsourced reports and coverage |
 | Fusion outputs | `fused_depth`, `risk_score` | Dynamic gated fusion outputs |
-| Reliability metadata | `miss_sat`, `miss_soc`, `dt_sat`, `dt_soc`, `n_soc` | Missingness, time gap, and report-count signals |
+| Reliability metadata | `miss_*`, `dt_*`, `q_*`, `n_soc` | Missingness, age, quality, and report-count signals |
 | Static maps | `exposure`, `drainage_capacity` | Urban exposure and drainage-capacity factors |
 
 Model input and target:
@@ -138,7 +163,7 @@ input_len = 12
 lead_time = 6
 height = 64
 width = 64
-channels = 13
+channels = 19 (new default) or 13 (legacy checkpoint compatibility)
 ```
 
 ## Repository Structure
@@ -147,8 +172,12 @@ channels = 13
 .
 |-- run_all.py                         # End-to-end pipeline runner
 |-- requirements.txt                   # Python dependencies
+|-- requirements-dev.txt               # Test dependencies
 |-- README.md                          # GitHub project homepage
 |-- PROJECT.md                         # Concise project report
+|-- DATA_CARD.md                       # Synthetic data and field definitions
+|-- LIMITATIONS.md                     # Valid-use boundaries
+|-- CHANGELOG.md                       # Auditable engineering changes
 |-- MODEL_COMPARISON_REPORT.md         # Generated model comparison report
 |-- ARCHITECTURE_EXPERIMENTS.md        # Architecture experiment note
 |-- docs/figures/                      # GitHub-ready showcase figures
@@ -157,6 +186,9 @@ channels = 13
 |   |-- align_modalities.py            # Async multimodal alignment
 |   |-- fuse_dynamic_gate.py           # Dynamic gated fusion
 |   |-- dataset.py                     # Sliding-window dataset
+|   |-- data/schemas.py                # Depth and threshold metadata
+|   |-- data/validation.py             # Realtime causality checks
+|   |-- training/losses.py             # Shared train/validation loss
 |   |-- model.py                       # Original Conv-LSTM model
 |   |-- train.py                       # Original Conv-LSTM training
 |   |-- evaluate.py                    # Original checkpoint evaluation
@@ -167,6 +199,7 @@ channels = 13
 |   |-- evaluate_architecture.py       # Metrics, latency, and memory evaluation
 |   |-- compare_architectures.py       # Three-model comparison runner
 |   `-- make_model_showcase.py         # Publication-ready figures and report
+|-- tests/                             # Correctness and compatibility tests
 |-- data/                              # Generated data, ignored by git
 |-- outputs/                           # Default generated outputs, ignored by git
 `-- runs/                              # Experiment artifacts, ignored by git
@@ -181,6 +214,13 @@ version if you want GPU acceleration.
 conda create -n floodwatch python=3.10 -y
 conda activate floodwatch
 pip install -r requirements.txt
+```
+
+For development and tests:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest -q
 ```
 
 ## Quick Start
@@ -211,10 +251,19 @@ Align asynchronous modalities:
 python -m src.align_modalities --raw_dir data/raw --out_dir data/aligned --mode realtime
 ```
 
+The corrected default uses `--value_decay_mode none`; use
+`--value_decay_mode legacy` only to reproduce historical alignment behavior.
+
 Fuse modalities:
 
 ```bash
 python -m src.fuse_dynamic_gate --aligned_dir data/aligned --out_dir data/fused
+```
+
+Validate realtime causality:
+
+```bash
+python -m src.data.validation --raw_dir data/raw --aligned_dir data/aligned --fused_dir data/fused --mode realtime
 ```
 
 Train the original Conv-LSTM:
@@ -276,3 +325,15 @@ runs/
 This keeps the GitHub repository source-focused. Large artifacts should be
 published through GitHub Releases, Git LFS, Hugging Face Hub, or cloud storage
 if needed.
+
+## Limitations
+
+The reported results validate an engineering pipeline on synthetic data. They
+do not establish real-city forecasting performance. Normalized depth is not a
+physical water-depth unit, the synthetic generator can make relationships more
+regular than real observations, and the current uncertainty band is a
+heuristic modality-disagreement band rather than a calibrated 95% confidence
+interval. See [LIMITATIONS.md](LIMITATIONS.md) and [DATA_CARD.md](DATA_CARD.md).
+
+CSI and IoU are numerically identical for the current binary flood-mask
+definition, so the main tables display CSI and treat IoU as an alias.

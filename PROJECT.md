@@ -51,8 +51,10 @@ runs/large60_grid_h24_h32_l1/h32_l1_d0_seed44/outputs/checkpoints/best.pt
 Recommended risk threshold:
 
 ```text
-0.28
+0.28 normalized_depth
 ```
+
+This is a normalized synthetic-benchmark threshold, not a centimeter value.
 
 ## Architecture Extensions
 
@@ -74,7 +76,7 @@ src/compare_architectures.py
 ## Current Results
 
 All rows use the same 60-event fused dataset, split seed `44`, and threshold
-`0.28`.
+`0.28 normalized_depth`.
 
 | Model | MAE | RMSE | CSI | Latency ms/sample | Peak CUDA MB |
 |---|---:|---:|---:|---:|---:|
@@ -82,7 +84,12 @@ All rows use the same 60-event fused dataset, split seed `44`, and threshold
 | Conv-LSTM + Attention | 0.070253 | 0.091082 | 0.895708 | 1.894 | 88.41 |
 | CNN-Temporal Transformer | 0.079548 | 0.100123 | 0.865670 | 8.055 | 259.32 |
 
-The preserved Conv-LSTM remains the strongest model on the current split.
+The preserved Conv-LSTM remains the strongest model on the current synthetic
+split. These rows use the historical 13-channel schema. Batch 1 correctness
+changes use a separate 19-channel schema and do not relabel these results.
+
+CSI is numerically identical to IoU under the current binary flood-mask
+definition.
 
 ## GitHub Packaging
 

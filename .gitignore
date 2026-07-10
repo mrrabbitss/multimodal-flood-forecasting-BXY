@@ -21,9 +21,9 @@ env/
 Thumbs.db
 
 # Generated data and experiment artifacts
-data/
-outputs/
-runs/
+/data/
+/outputs/
+/runs/
 *.npz
 *.pt
 *.pth

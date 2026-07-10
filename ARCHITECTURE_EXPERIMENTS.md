@@ -72,7 +72,8 @@ C:\Users\23173\Anaconda3\envs\floodwatch\python.exe -m src.compare_architectures
 
 ## Result Summary
 
-All rows use the same fused dataset, split seed `44`, test events, and threshold
+All rows use the same fused dataset, split seed `44`, test events, and
+normalized-depth threshold
 `0.28`.
 
 | Model | MAE | RMSE | CSI | Latency ms/sample | Peak CUDA MB |

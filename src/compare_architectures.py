@@ -12,6 +12,7 @@ import numpy as np
 import torch
 
 from .evaluate_architecture import evaluate_checkpoint
+from .dataset import channel_names_from_checkpoint
 from .model_variants import model_display_name, normalize_model_type
 from .utils import ensure_dir, load_json, save_json
 
@@ -36,6 +37,7 @@ def checkpoint_defaults(path: str | Path | None) -> dict[str, Any]:
         "split_seed": int(ckpt.get("split_seed", 42)),
         "shuffle_split": bool(ckpt.get("shuffle_split", True)),
         "threshold": float(ckpt.get("threshold", 0.30)),
+        "channel_names": list(channel_names_from_checkpoint(ckpt)),
     }
 
 
@@ -242,6 +244,8 @@ def train_variant(args: argparse.Namespace, model_type: str, output_dir: Path, s
         str(args.input_len),
         "--lead_time",
         str(args.lead_time),
+        "--input_channels",
+        args.input_channels,
         "--epochs",
         str(args.epochs),
         "--batch_size",
@@ -295,6 +299,7 @@ def main() -> None:
     parser.add_argument("--model_types", type=str, default="convlstm_attention,cnn_temporal_transformer")
     parser.add_argument("--input_len", type=int, default=None)
     parser.add_argument("--lead_time", type=int, default=None)
+    parser.add_argument("--input_channels", type=str, default=None)
     parser.add_argument("--epochs", type=int, default=8)
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--hidden", type=int, default=32)
@@ -330,6 +335,8 @@ def main() -> None:
     defaults = checkpoint_defaults(args.baseline_checkpoint)
     args.input_len = args.input_len if args.input_len is not None else int(defaults.get("input_len", 12))
     args.lead_time = args.lead_time if args.lead_time is not None else int(defaults.get("lead_time", 6))
+    if args.input_channels is None:
+        args.input_channels = ",".join(defaults.get("channel_names", [])) or "default"
     split_seed = args.split_seed if args.split_seed is not None else int(defaults.get("split_seed", args.seed))
     shuffle_split = args.shuffle_split if args.shuffle_split is not None else bool(defaults.get("shuffle_split", True))
 
@@ -399,6 +406,7 @@ def main() -> None:
                 "rows": rows,
                 "fused_dir": args.fused_dir,
                 "threshold": float(args.threshold),
+                "risk_threshold": rows[0].get("risk_threshold"),
                 "split_seed": int(split_seed),
                 "shuffle_split": bool(shuffle_split),
             },

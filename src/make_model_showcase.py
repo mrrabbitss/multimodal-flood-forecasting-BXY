@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from .data.schemas import DEFAULT_DEPTH_SCALE, make_risk_threshold
 from .utils import ensure_dir, load_json, save_json
 
 
@@ -241,7 +242,7 @@ def plot_baseline_comparison(baseline_df: pd.DataFrame, threshold: float, path: 
     colors = [BASELINE_COLORS.get(label, "#777777") for label in labels]
 
     axes[0].bar(x, csi_values, color=colors)
-    axes[0].set_title(f"CSI at threshold {threshold:.2f}")
+    axes[0].set_title(f"CSI at normalized-depth threshold {threshold:.2f}")
     axes[0].set_ylabel("CSI (higher is better)")
     axes[0].set_xticks(x)
     axes[0].set_xticklabels(labels, rotation=28, ha="right")
@@ -249,7 +250,7 @@ def plot_baseline_comparison(baseline_df: pd.DataFrame, threshold: float, path: 
     value_labels(axes[0], csi_values, "{:.3f}", dy=0.012)
 
     axes[1].bar(x, mae_values, color=colors)
-    axes[1].set_title(f"MAE at threshold {threshold:.2f}")
+    axes[1].set_title(f"MAE at normalized-depth threshold {threshold:.2f}")
     axes[1].set_ylabel("MAE (lower is better)")
     axes[1].set_xticks(x)
     axes[1].set_xticklabels(labels, rotation=28, ha="right")
@@ -276,12 +277,12 @@ def plot_threshold_sensitivity(baseline_df: pd.DataFrame, path: Path) -> None:
         axes[0].plot(part["threshold"], part["csi"], marker="o", linewidth=2, label=model_name, color=color)
         axes[1].plot(part["threshold"], part["far"], marker="s", linewidth=2, label=model_name, color=color)
     axes[0].set_title("CSI Sensitivity to Risk Threshold")
-    axes[0].set_xlabel("Threshold")
+    axes[0].set_xlabel("Threshold (normalized_depth)")
     axes[0].set_ylabel("CSI")
     axes[0].grid(alpha=0.25)
     axes[0].legend(fontsize=8)
     axes[1].set_title("FAR Sensitivity to Risk Threshold")
-    axes[1].set_xlabel("Threshold")
+    axes[1].set_xlabel("Threshold (normalized_depth)")
     axes[1].set_ylabel("FAR")
     axes[1].grid(alpha=0.25)
     axes[1].legend(fontsize=8)
@@ -479,6 +480,7 @@ def main() -> None:
             "docs_figures_dir": str(docs_figures_dir),
             "report_path": str(args.report_path),
             "threshold": float(args.threshold),
+            "risk_threshold": make_risk_threshold(args.threshold, DEFAULT_DEPTH_SCALE).to_dict(),
             "figures": sorted(p.name for p in fig_dir.glob("*.png")),
         },
         out_dir / "showcase_manifest.json",

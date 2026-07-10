@@ -8,7 +8,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from .dataset import FloodSequenceDataset
+from .data.schemas import depth_scale_from_checkpoint, make_risk_threshold
+from .dataset import FloodSequenceDataset, channel_names_from_checkpoint
 from .metrics import all_metrics
 from .model_variants import (
     build_model_from_checkpoint,
@@ -16,6 +17,7 @@ from .model_variants import (
     count_parameters,
     model_display_name,
 )
+from .training.losses import LossConfig, build_loss
 from .utils import ensure_dir, list_npz_files, save_json, set_seed
 
 
@@ -106,10 +108,19 @@ def evaluate_checkpoint(
     split_seed = int(ckpt.get("split_seed", seed))
     shuffle_split = bool(ckpt.get("shuffle_split", False))
     model_type = checkpoint_model_type(ckpt)
+    depth_scale = depth_scale_from_checkpoint(ckpt)
+    channel_names = channel_names_from_checkpoint(ckpt)
+    loss_config = LossConfig.from_checkpoint(ckpt)
 
     files = [p for p in list_npz_files(fused_dir) if p.name.startswith("event_")]
     _, _, test_idx = FloodSequenceDataset.split_indices(len(files), seed=split_seed, shuffle=shuffle_split)
-    test_ds = FloodSequenceDataset(fused_dir, test_idx, input_len=input_len, lead_time=lead_time)
+    test_ds = FloodSequenceDataset(
+        fused_dir,
+        test_idx,
+        input_len=input_len,
+        lead_time=lead_time,
+        channel_names=channel_names,
+    )
     loader = DataLoader(
         test_ds,
         batch_size=batch_size,
@@ -136,11 +147,16 @@ def evaluate_checkpoint(
     )
 
     preds, targets = [], []
+    loss_values: dict[str, list[float]] = {}
     with torch.no_grad():
         for x, y in loader:
             x = x.to(device, non_blocking=True)
+            y_device = y.to(device, non_blocking=True)
             with torch.amp.autocast("cuda", enabled=amp and device.type == "cuda"):
                 pred = model(x)
+                breakdown = build_loss(pred, y_device, loss_config)
+            for key, value in breakdown.detached_values().items():
+                loss_values.setdefault(key, []).append(value)
             preds.append(pred.detach().cpu().numpy())
             targets.append(y.numpy())
     if device.type == "cuda":
@@ -149,6 +165,9 @@ def evaluate_checkpoint(
     pred_np = np.concatenate(preds, axis=0)
     target_np = np.concatenate(targets, axis=0)
     metrics = all_metrics(pred_np, target_np, threshold=eval_threshold)
+    for key, values in loss_values.items():
+        metrics[key] = float(np.mean(values))
+    metrics["loss"] = metrics["loss_total"]
     metrics.update(latency)
     metrics["model_type"] = model_type
     metrics["model_label"] = ckpt.get("model_label", model_display_name(model_type))
@@ -160,6 +179,10 @@ def evaluate_checkpoint(
     metrics["split_seed"] = int(split_seed)
     metrics["shuffle_split"] = bool(shuffle_split)
     metrics["threshold"] = float(eval_threshold)
+    metrics["risk_threshold"] = make_risk_threshold(eval_threshold, depth_scale).to_dict()
+    metrics["depth_scale"] = depth_scale.to_dict()
+    metrics["channel_names"] = list(channel_names)
+    metrics["loss_config"] = loss_config.to_dict()
     metrics["device"] = str(device)
     metrics["amp"] = bool(amp and device.type == "cuda")
     metrics["evaluation_runtime_sec"] = float(time.time() - eval_start)

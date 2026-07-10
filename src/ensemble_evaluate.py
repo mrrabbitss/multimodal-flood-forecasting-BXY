@@ -8,7 +8,8 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .dataset import FloodSequenceDataset
+from .data.schemas import depth_scale_from_checkpoint, make_risk_threshold
+from .dataset import FloodSequenceDataset, channel_names_from_checkpoint
 from .metrics import all_metrics
 from .model import ConvLSTMForecastNet
 from .utils import ensure_dir, list_npz_files, save_json
@@ -22,14 +23,17 @@ def parse_checkpoint_paths(value: str) -> list[Path]:
 
 
 def build_model_from_checkpoint(checkpoint: dict, device: torch.device) -> ConvLSTMForecastNet:
+    depth_scale = depth_scale_from_checkpoint(checkpoint)
+    channel_names = channel_names_from_checkpoint(checkpoint)
     model = ConvLSTMForecastNet(
         input_channels=int(checkpoint["input_channels"]),
         hidden_channels=int(checkpoint.get("hidden_channels", 24)),
         num_layers=int(checkpoint.get("num_layers", 1)),
         dropout=float(checkpoint.get("dropout", 0.0)),
-        output_max=float(checkpoint.get("output_max", 1.0)),
+        output_max=depth_scale.max_value,
         residual_scale=float(checkpoint.get("residual_scale", 0.35)),
         use_residual=bool(checkpoint.get("use_residual", False)),
+        fused_channel=int(checkpoint.get("fused_channel", channel_names.index("fused_depth") if "fused_depth" in channel_names else -1)),
     ).to(device)
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
@@ -64,12 +68,16 @@ def main() -> None:
     split_seed = int(base.get("split_seed", args.seed))
     shuffle_split = bool(base.get("shuffle_split", True))
     threshold = float(args.threshold if args.threshold is not None else base.get("threshold", 0.30))
+    channel_names = channel_names_from_checkpoint(base)
+    depth_scale = depth_scale_from_checkpoint(base)
 
     for path, checkpoint in zip(checkpoint_paths, checkpoints):
         if int(checkpoint.get("input_len", input_len)) != input_len or int(checkpoint.get("lead_time", lead_time)) != lead_time:
             raise ValueError(f"Checkpoint {path} uses a different input_len/lead_time.")
         if int(checkpoint.get("split_seed", split_seed)) != split_seed or bool(checkpoint.get("shuffle_split", shuffle_split)) != shuffle_split:
             raise ValueError(f"Checkpoint {path} uses a different split; ensemble would not be comparable.")
+        if channel_names_from_checkpoint(checkpoint) != channel_names:
+            raise ValueError(f"Checkpoint {path} uses a different channel schema.")
 
     files = [p for p in list_npz_files(args.fused_dir) if p.name.startswith("event_")]
     train_idx, val_idx, test_idx = FloodSequenceDataset.split_indices(
@@ -77,7 +85,7 @@ def main() -> None:
         seed=split_seed,
         shuffle=shuffle_split,
     )
-    test_ds = FloodSequenceDataset(args.fused_dir, test_idx, input_len, lead_time)
+    test_ds = FloodSequenceDataset(args.fused_dir, test_idx, input_len, lead_time, channel_names=channel_names)
     test_loader = DataLoader(
         test_ds,
         batch_size=args.batch_size,
@@ -103,6 +111,9 @@ def main() -> None:
     metrics.update(
         {
             "threshold": threshold,
+            "risk_threshold": make_risk_threshold(threshold, depth_scale).to_dict(),
+            "depth_scale": depth_scale.to_dict(),
+            "channel_names": list(channel_names),
             "n_models": len(models),
             "checkpoint_paths": [str(path) for path in checkpoint_paths],
             "train_events": train_idx,

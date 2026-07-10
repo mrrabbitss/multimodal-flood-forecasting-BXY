@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from src.data.schemas import DEFAULT_DEPTH_SCALE
+
 
 def run(cmd: list[str]) -> None:
     print("\n>>> " + " ".join(cmd), flush=True)
@@ -22,9 +24,12 @@ def main() -> None:
     parser.add_argument("--hidden", type=int, default=24)
     parser.add_argument("--num_layers", type=int, default=1)
     parser.add_argument("--dropout", type=float, default=0.0)
-    parser.add_argument("--output_max", type=float, default=1.0)
+    parser.add_argument("--depth_scale_mode", type=str, choices=["normalized"], default="normalized")
+    parser.add_argument("--depth_max", type=float, default=DEFAULT_DEPTH_SCALE.max_value)
+    parser.add_argument("--output_max", type=float, default=None, help="Deprecated alias for --depth_max")
     parser.add_argument("--residual_scale", type=float, default=0.35)
     parser.add_argument("--use_residual", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--input_channels", type=str, default="default")
     parser.add_argument("--input_len", type=int, default=12)
     parser.add_argument("--lead_time", type=int, default=6)
     parser.add_argument("--seed", type=int, default=42)
@@ -44,8 +49,13 @@ def main() -> None:
     parser.add_argument("--early_stop_patience", type=int, default=3)
     parser.add_argument("--progress", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"])
+    parser.add_argument("--value_decay_mode", choices=["none", "legacy"], default="none")
+    parser.add_argument("--social_radius", type=int, default=3)
+    parser.add_argument("--social_sigma", type=float, default=1.5)
     parser.add_argument("--base_dir", type=str, default=".")
     args = parser.parse_args()
+    if args.output_max is not None:
+        args.depth_max = float(args.output_max)
 
     base = Path(args.base_dir)
     raw_dir = base / "data" / "raw"
@@ -70,6 +80,10 @@ def main() -> None:
         str(args.seed),
         "--out_dir",
         str(raw_dir),
+        "--depth_scale_mode",
+        args.depth_scale_mode,
+        "--depth_max",
+        str(args.depth_max),
     ])
     run([
         py,
@@ -81,6 +95,12 @@ def main() -> None:
         str(aligned_dir),
         "--mode",
         "realtime",
+        "--value_decay_mode",
+        args.value_decay_mode,
+        "--social_radius",
+        str(args.social_radius),
+        "--social_sigma",
+        str(args.social_sigma),
     ])
     run([
         py,
@@ -113,8 +133,12 @@ def main() -> None:
         str(args.num_layers),
         "--dropout",
         str(args.dropout),
-        "--output_max",
-        str(args.output_max),
+        "--depth_scale_mode",
+        args.depth_scale_mode,
+        "--depth_max",
+        str(args.depth_max),
+        "--input_channels",
+        args.input_channels,
         "--residual_scale",
         str(args.residual_scale),
         "--seed",
@@ -154,6 +178,23 @@ def main() -> None:
         train_cmd.append("--use_residual")
     if not args.shuffle_split:
         train_cmd.append("--no-shuffle_split")
+    run([
+        py,
+        "-m",
+        "src.data.validation",
+        "--raw_dir",
+        str(raw_dir),
+        "--aligned_dir",
+        str(aligned_dir),
+        "--fused_dir",
+        str(fused_dir),
+        "--input_len",
+        str(args.input_len),
+        "--lead_time",
+        str(args.lead_time),
+        "--output",
+        str(output_dir / "metrics" / "causality_report.json"),
+    ])
     run(train_cmd)
     run([
         py,

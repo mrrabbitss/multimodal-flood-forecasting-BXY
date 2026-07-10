@@ -8,18 +8,19 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from .dataset import FloodSequenceDataset
+from .data.schemas import depth_scale_from_arrays, depth_scale_from_checkpoint, make_risk_threshold
+from .dataset import FloodSequenceDataset, channel_names_for_data, channel_names_from_checkpoint
 from .metrics import all_metrics
 from .model import ConvLSTMForecastNet
 from .utils import ensure_dir, list_npz_files, save_json, set_seed
 
 
 BASELINE_CHANNELS = {
-    "persistence_meteo": 0,
-    "persistence_sat_proxy": 1,
-    "persistence_soc": 3,
-    "persistence_fused": 4,
-    "persistence_risk_score": 5,
+    "persistence_meteo": "meteo",
+    "persistence_sat_proxy": "satellite",
+    "persistence_soc": "social",
+    "persistence_fused": "fused_depth",
+    "persistence_risk_score": "risk_score",
 }
 
 
@@ -86,29 +87,44 @@ def main() -> None:
     lead_time = args.lead_time
     split_seed = args.seed if args.split_seed is None else args.split_seed
     shuffle_split = args.shuffle_split
+    channel_names = channel_names_for_data(args.fused_dir)
     if args.checkpoint:
         ckpt = torch.load(args.checkpoint, map_location=device)
         input_len = int(ckpt.get("input_len", input_len))
         lead_time = int(ckpt.get("lead_time", lead_time))
         split_seed = int(ckpt.get("split_seed", split_seed))
         shuffle_split = bool(ckpt.get("shuffle_split", shuffle_split))
+        channel_names = channel_names_from_checkpoint(ckpt)
 
     thresholds = parse_float_list(args.thresholds)
     files = [p for p in list_npz_files(args.fused_dir) if p.name.startswith("event_")]
+    if ckpt is not None:
+        depth_scale = depth_scale_from_checkpoint(ckpt)
+    else:
+        with np.load(files[0]) as data:
+            depth_scale = depth_scale_from_arrays({key: data[key] for key in data.files})
     _, _, test_idx = FloodSequenceDataset.split_indices(len(files), seed=split_seed, shuffle=shuffle_split)
-    test_ds = FloodSequenceDataset(args.fused_dir, test_idx, input_len=input_len, lead_time=lead_time)
+    test_ds = FloodSequenceDataset(
+        args.fused_dir,
+        test_idx,
+        input_len=input_len,
+        lead_time=lead_time,
+        channel_names=channel_names,
+    )
     loader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     model = None
     if ckpt is not None:
+        depth_scale = depth_scale_from_checkpoint(ckpt)
         model = ConvLSTMForecastNet(
             input_channels=int(ckpt["input_channels"]),
             hidden_channels=int(ckpt["hidden_channels"]),
             num_layers=int(ckpt.get("num_layers", 1)),
             dropout=float(ckpt.get("dropout", 0.0)),
-            output_max=float(ckpt.get("output_max", 1.0)),
+            output_max=depth_scale.max_value,
             residual_scale=float(ckpt.get("residual_scale", 0.35)),
             use_residual=bool(ckpt.get("use_residual", False)),
+            fused_channel=int(ckpt.get("fused_channel", channel_names.index("fused_depth") if "fused_depth" in channel_names else -1)),
         ).to(device)
         model.load_state_dict(ckpt["model_state"])
         model.eval()
@@ -125,8 +141,9 @@ def main() -> None:
             targets.append(y.numpy())
             x_np = x.numpy()
             preds_by_name["zero_depth"].append(np.zeros_like(y.numpy(), dtype=np.float32))
-            for name, channel in BASELINE_CHANNELS.items():
-                if channel < x_np.shape[2]:
+            for name, channel_name in BASELINE_CHANNELS.items():
+                if channel_name in channel_names:
+                    channel = channel_names.index(channel_name)
                     preds_by_name[name].append(x_np[:, -1, channel : channel + 1])
             if model is not None:
                 preds_by_name["convlstm"].append(model(x.to(device)).cpu().numpy())
@@ -148,6 +165,8 @@ def main() -> None:
             "test_events": test_idx,
             "split_seed": int(split_seed),
             "shuffle_split": bool(shuffle_split),
+            "channel_names": list(channel_names),
+            "risk_thresholds": [make_risk_threshold(value, depth_scale).to_dict() for value in thresholds],
         },
         out_dir / "baseline_comparison.json",
     )

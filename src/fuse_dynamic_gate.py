@@ -6,14 +6,23 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
+from .data.schemas import depth_scale_from_arrays, make_risk_threshold
 from .utils import ensure_dir, list_npz_files, to_float32_dict
 
 
-def softmax_reliability(r: np.ndarray, temperature: float = 0.25) -> np.ndarray:
+def softmax_reliability(
+    r: np.ndarray,
+    temperature: float = 0.25,
+    availability: np.ndarray | None = None,
+) -> np.ndarray:
     r = np.asarray(r, dtype=np.float32)
+    if availability is None:
+        availability = np.ones_like(r, dtype=np.float32)
+    availability = np.broadcast_to(np.asarray(availability, dtype=np.float32), r.shape)
     z = r / max(temperature, 1e-6)
+    z = np.where(availability > 0.0, z, -1e9)
     z = z - np.max(z, axis=0, keepdims=True)
-    e = np.exp(z)
+    e = np.exp(z) * availability
     return e / (e.sum(axis=0, keepdims=True) + 1e-8)
 
 
@@ -24,13 +33,15 @@ def fuse_event(path: Path, out_path: Path, threshold_low: float, threshold_high:
     gis = a["gis_risk"].astype(np.float32)
     soc = a["soc_depth"].astype(np.float32)
     gt = a["gt_depth"].astype(np.float32)
+    depth_scale = depth_scale_from_arrays({key: a[key] for key in a.files})
+    depth_max = depth_scale.max_value
 
     t, h, w = meteo.shape
 
     # Depth adapters: non-depth modalities are mapped to normalized depth proxy.
     d_meteo = meteo
-    d_sat = np.clip(0.55 * sat + 0.10 * meteo, 0, 1.2).astype(np.float32)
-    d_gis = np.clip(0.36 * gis + 0.22 * meteo, 0, 1.2).astype(np.float32)
+    d_sat = np.clip(0.55 * sat + 0.10 * meteo, depth_scale.min_value, depth_max).astype(np.float32)
+    d_gis = np.clip(0.36 * gis + 0.22 * meteo, depth_scale.min_value, depth_max).astype(np.float32)
     d_soc = soc
 
     fused = np.zeros_like(meteo)
@@ -58,42 +69,70 @@ def fuse_event(path: Path, out_path: Path, threshold_low: float, threshold_high:
         r_s = 0.0 if miss_sat else q_sat * np.exp(-0.018 * dt_sat)
         r_g = 0.0 if miss_gis else q_gis * np.exp(-0.002 * dt_gis)
         density_factor = np.clip(np.log1p(n_soc) / np.log(25.0), 0.0, 1.0)
-        r_c = 0.0 if miss_soc else q_soc * np.exp(-0.12 * dt_soc) * density_factor
+        if "soc_observation_mask" in a.files:
+            soc_mask = a["soc_observation_mask"][i].astype(np.float32)
+            soc_confidence = a["soc_confidence_map"][i].astype(np.float32)
+            soc_count = a["soc_count_map"][i].astype(np.float32)
+            soc_age = a["soc_age_map"][i].astype(np.float32)
+            spatial_density = np.clip(np.log1p(soc_count) / np.log(4.0), 0.0, 1.0)
+            r_c = soc_mask * soc_confidence * np.exp(-0.12 * soc_age) * spatial_density
+        else:
+            soc_mask = np.full((h, w), 0.0 if miss_soc else 1.0, dtype=np.float32)
+            r_c = np.full(
+                (h, w),
+                0.0 if miss_soc else q_soc * np.exp(-0.12 * dt_soc) * density_factor,
+                dtype=np.float32,
+            )
 
         r_stack = np.stack(
             [
                 np.full((h, w), r_m, dtype=np.float32),
                 np.full((h, w), r_s, dtype=np.float32),
                 np.full((h, w), r_g, dtype=np.float32),
-                np.full((h, w), r_c, dtype=np.float32),
+                r_c,
             ],
             axis=0,
         )
-        wgt = softmax_reliability(r_stack, temperature=0.45)
+        availability = np.stack(
+            [
+                np.ones((h, w), dtype=np.float32),
+                np.full((h, w), 0.0 if miss_sat else 1.0, dtype=np.float32),
+                np.full((h, w), 0.0 if miss_gis else 1.0, dtype=np.float32),
+                soc_mask,
+            ],
+            axis=0,
+        )
+        wgt = softmax_reliability(r_stack, temperature=0.45, availability=availability)
         weights[i] = wgt
 
         depth_stack = np.stack([d_meteo[i], d_sat[i], d_gis[i], d_soc[i]], axis=0)
         fused_i = np.sum(wgt * depth_stack, axis=0)
-        fused[i] = np.clip(fused_i, 0, 1.2)
+        fused[i] = np.clip(fused_i, depth_scale.min_value, depth_max)
 
         # Uncertainty proxy: disagreement between modalities + low confidence penalty.
         mean_depth = fused_i[None, ...]
         disagreement = np.sum(wgt * (depth_stack - mean_depth) ** 2, axis=0)
         confidence = np.max(wgt, axis=0)
         uncertainty = np.sqrt(disagreement + 0.015 * (1.0 - confidence))
-        ci_low[i] = np.clip(fused_i - 1.96 * uncertainty, 0, 1.2)
-        ci_high[i] = np.clip(fused_i + 1.96 * uncertainty, 0, 1.2)
+        ci_low[i] = np.clip(fused_i - 1.96 * uncertainty, depth_scale.min_value, depth_max)
+        ci_high[i] = np.clip(fused_i + 1.96 * uncertainty, depth_scale.min_value, depth_max)
 
         exposure = a["exposure"].astype(np.float32)
         drainage_penalty = 1.0 - a["drainage_capacity"].astype(np.float32)
         # Final risk combines depth, exposure and drainage weakness.
-        risk_score[i] = np.clip(0.70 * fused[i] + 0.18 * exposure + 0.12 * drainage_penalty, 0, 1.2)
+        risk_score[i] = np.clip(
+            0.70 * fused[i] + 0.18 * exposure + 0.12 * drainage_penalty,
+            depth_scale.min_value,
+            depth_max,
+        )
 
     risk_level = np.zeros_like(risk_score, dtype=np.int16)
     risk_level[risk_score >= threshold_low] = 1
     risk_level[risk_score >= threshold_high] = 2
 
-    out = {k: a[k] for k in a.files if k not in {"mode"}}
+    low_threshold = make_risk_threshold(threshold_low, depth_scale)
+    high_threshold = make_risk_threshold(threshold_high, depth_scale)
+    out = {k: a[k] for k in a.files}
     out.update(
         {
             "d_meteo": d_meteo,
@@ -103,11 +142,17 @@ def fuse_event(path: Path, out_path: Path, threshold_low: float, threshold_high:
             "fused_depth": fused,
             "ci_low": ci_low,
             "ci_high": ci_high,
+            "uncertainty_low": ci_low,
+            "uncertainty_high": ci_high,
+            "uncertainty_kind": np.array("heuristic_modality_disagreement_band"),
             "risk_score": risk_score.astype(np.float32),
             "risk_level": risk_level,
             "weights": weights,
             "threshold_low": np.array(threshold_low, dtype=np.float32),
             "threshold_high": np.array(threshold_high, dtype=np.float32),
+            "threshold_unit": np.array(depth_scale.unit),
+            "threshold_low_meaning": np.array(low_threshold.meaning),
+            "threshold_high_meaning": np.array(high_threshold.meaning),
         }
     )
     np.savez_compressed(out_path, **to_float32_dict(out))

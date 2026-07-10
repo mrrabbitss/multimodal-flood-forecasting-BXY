@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
+from .data.schemas import DEFAULT_DEPTH_SCALE, DepthScale, make_depth_scale
 from .utils import ensure_dir, gaussian_blob, minmax_norm, save_json, set_seed, smooth2d, to_float32_dict
 
 
@@ -71,7 +72,12 @@ def make_static_fields(h: int, w: int, rng: np.random.Generator) -> dict:
     }
 
 
-def simulate_gt_depth(rain: np.ndarray, fields: dict, rng: np.random.Generator) -> np.ndarray:
+def simulate_gt_depth(
+    rain: np.ndarray,
+    fields: dict,
+    rng: np.random.Generator,
+    depth_max: float = DEFAULT_DEPTH_SCALE.max_value,
+) -> np.ndarray:
     """Simulate latent ground-truth flood depth field.
 
     The update uses a simple hydrology-inspired recurrence:
@@ -98,12 +104,17 @@ def simulate_gt_depth(rain: np.ndarray, fields: dict, rng: np.random.Generator) 
         water = np.clip(water, 0, None)
         gt[i] = water
         prev = water
-    # Keep depth scale stable across events. Think of 1.0 as a severe normalized depth.
-    gt = np.clip(gt / (np.percentile(gt, 99.5) + 1e-6), 0, 1.2).astype(np.float32)
+    # Keep one explicit normalized scale across labels, models, losses, and plots.
+    gt = np.clip(gt / (np.percentile(gt, 99.5) + 1e-6), 0, depth_max).astype(np.float32)
     return gt
 
 
-def make_meteo_depth(gt: np.ndarray, rain: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+def make_meteo_depth(
+    gt: np.ndarray,
+    rain: np.ndarray,
+    rng: np.random.Generator,
+    depth_max: float = DEFAULT_DEPTH_SCALE.max_value,
+) -> np.ndarray:
     t, h, w = gt.shape
     bias = rng.uniform(-0.04, 0.07)
     meteo = np.zeros_like(gt)
@@ -113,7 +124,7 @@ def make_meteo_depth(gt: np.ndarray, rain: np.ndarray, rng: np.random.Generator)
         field = 0.88 * gt[src] + 0.08 * rain[i]
         noise = rng.normal(0, 0.025, size=(h, w)).astype(np.float32)
         meteo[i] = smooth2d(field + bias + noise, passes=1)
-    return np.clip(meteo, 0, 1.2).astype(np.float32)
+    return np.clip(meteo, 0, depth_max).astype(np.float32)
 
 
 def make_sat_sequence(gt: np.ndarray, rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -143,7 +154,12 @@ def make_gis_sequence(fields: dict, rng: np.random.Generator) -> tuple[np.ndarra
     return gis_times, gis, q
 
 
-def make_social_points(gt: np.ndarray, fields: dict, rng: np.random.Generator) -> dict:
+def make_social_points(
+    gt: np.ndarray,
+    fields: dict,
+    rng: np.random.Generator,
+    depth_max: float = DEFAULT_DEPTH_SCALE.max_value,
+) -> dict:
     t, h, w = gt.shape
     point_t: list[int] = []
     point_y: list[int] = []
@@ -173,7 +189,7 @@ def make_social_points(gt: np.ndarray, fields: dict, rng: np.random.Generator) -
             point_t.append(ti)
             point_y.append(y)
             point_x.append(x)
-            point_value.append(float(np.clip(obs, 0, 1.2)))
+            point_value.append(float(np.clip(obs, 0, depth_max)))
             point_conf.append(float(conf))
 
     return {
@@ -185,19 +201,30 @@ def make_social_points(gt: np.ndarray, fields: dict, rng: np.random.Generator) -
     }
 
 
-def generate_event(event_id: int, t: int, h: int, w: int, seed: int) -> dict:
+def generate_event(
+    event_id: int,
+    t: int,
+    h: int,
+    w: int,
+    seed: int,
+    depth_scale: DepthScale = DEFAULT_DEPTH_SCALE,
+) -> dict:
     rng = np.random.default_rng(seed + event_id * 1009)
     rain = make_rain_series(t, rng)
     fields = make_static_fields(h, w, rng)
-    gt_depth = simulate_gt_depth(rain, fields, rng)
-    meteo_depth = make_meteo_depth(gt_depth, rain, rng)
+    gt_depth = simulate_gt_depth(rain, fields, rng, depth_max=depth_scale.max_value)
+    meteo_depth = make_meteo_depth(gt_depth, rain, rng, depth_max=depth_scale.max_value)
     sat_times, sat_base, sat_quality = make_sat_sequence(gt_depth, rng)
     gis_times, gis_risk, gis_quality = make_gis_sequence(fields, rng)
-    social = make_social_points(gt_depth, fields, rng)
+    social = make_social_points(gt_depth, fields, rng, depth_max=depth_scale.max_value)
 
     data = {
         "event_id": np.array(event_id, dtype=np.int32),
         "anchors": np.arange(t, dtype=np.int32),
+        "depth_scale_mode": np.array(depth_scale.mode),
+        "depth_min": np.array(depth_scale.min_value, dtype=np.float32),
+        "depth_max": np.array(depth_scale.max_value, dtype=np.float32),
+        "depth_unit": np.array(depth_scale.unit),
         "rain": rain,
         "gt_depth": gt_depth,
         "meteo_times": np.arange(t, dtype=np.int32),
@@ -222,12 +249,15 @@ def main() -> None:
     parser.add_argument("--w", type=int, default=64)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--out_dir", type=str, default="data/raw")
+    parser.add_argument("--depth_scale_mode", type=str, choices=["normalized"], default="normalized")
+    parser.add_argument("--depth_max", type=float, default=DEFAULT_DEPTH_SCALE.max_value)
     args = parser.parse_args()
 
     set_seed(args.seed)
+    depth_scale = make_depth_scale(args.depth_scale_mode, args.depth_max)
     out_dir = ensure_dir(args.out_dir)
     for eid in tqdm(range(args.num_events), desc="Generating synthetic events"):
-        event = generate_event(eid, args.t, args.h, args.w, args.seed)
+        event = generate_event(eid, args.t, args.h, args.w, args.seed, depth_scale=depth_scale)
         np.savez_compressed(out_dir / f"event_{eid:04d}.npz", **event)
 
     save_json(
@@ -237,6 +267,7 @@ def main() -> None:
             "h": args.h,
             "w": args.w,
             "seed": args.seed,
+            "depth_scale": depth_scale.to_dict(),
             "description": "Synthetic multimodal flood events with latent ground-truth depth and asynchronous observations.",
         },
         out_dir / "metadata.json",

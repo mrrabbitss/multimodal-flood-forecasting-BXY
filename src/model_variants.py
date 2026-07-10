@@ -5,6 +5,7 @@ from typing import Any
 import torch
 from torch import nn
 
+from .data.schemas import DEFAULT_DEPTH_SCALE, depth_scale_from_checkpoint
 from .model import ConvLSTMCell, ConvLSTMForecastNet
 
 
@@ -70,7 +71,7 @@ class ConvLSTMWithAttentionForecastNet(nn.Module):
         num_layers: int = 1,
         dropout: float = 0.0,
         attention_dropout: float = 0.0,
-        output_max: float = 1.0,
+        output_max: float = DEFAULT_DEPTH_SCALE.max_value,
         residual_scale: float = 0.35,
         use_residual: bool = False,
         fused_channel: int = 4,
@@ -136,7 +137,7 @@ class CNNTemporalTransformerForecastNet(nn.Module):
         transformer_heads: int = 4,
         transformer_ffn_mult: float = 4.0,
         dropout: float = 0.0,
-        output_max: float = 1.0,
+        output_max: float = DEFAULT_DEPTH_SCALE.max_value,
         residual_scale: float = 0.35,
         use_residual: bool = False,
         fused_channel: int = 4,
@@ -204,9 +205,10 @@ def build_forecast_model(
     hidden_channels: int = 32,
     num_layers: int = 1,
     dropout: float = 0.0,
-    output_max: float = 1.0,
+    output_max: float = DEFAULT_DEPTH_SCALE.max_value,
     residual_scale: float = 0.35,
     use_residual: bool = False,
+    fused_channel: int = 4,
     attention_dropout: float = 0.0,
     transformer_heads: int = 4,
     transformer_ffn_mult: float = 4.0,
@@ -222,6 +224,7 @@ def build_forecast_model(
             output_max=output_max,
             residual_scale=residual_scale,
             use_residual=use_residual,
+            fused_channel=fused_channel,
         )
     if model_type == MODEL_CONVLSTM_ATTENTION:
         return ConvLSTMWithAttentionForecastNet(
@@ -233,6 +236,7 @@ def build_forecast_model(
             output_max=output_max,
             residual_scale=residual_scale,
             use_residual=use_residual,
+            fused_channel=fused_channel,
         )
     if model_type == MODEL_CNN_TEMPORAL_TRANSFORMER:
         return CNNTemporalTransformerForecastNet(
@@ -245,6 +249,7 @@ def build_forecast_model(
             output_max=output_max,
             residual_scale=residual_scale,
             use_residual=use_residual,
+            fused_channel=fused_channel,
             max_input_len=max_input_len,
         )
     raise ValueError(f"Unknown model_type: {model_type}")
@@ -256,15 +261,17 @@ def checkpoint_model_type(checkpoint: dict[str, Any]) -> str:
 
 def build_model_from_checkpoint(checkpoint: dict[str, Any]) -> nn.Module:
     input_len = int(checkpoint.get("input_len", 12))
+    depth_scale = depth_scale_from_checkpoint(checkpoint)
     return build_forecast_model(
         model_type=checkpoint_model_type(checkpoint),
         input_channels=int(checkpoint["input_channels"]),
         hidden_channels=int(checkpoint["hidden_channels"]),
         num_layers=int(checkpoint.get("num_layers", 1)),
         dropout=float(checkpoint.get("dropout", 0.0)),
-        output_max=float(checkpoint.get("output_max", 1.0)),
+        output_max=depth_scale.max_value,
         residual_scale=float(checkpoint.get("residual_scale", 0.35)),
         use_residual=bool(checkpoint.get("use_residual", False)),
+        fused_channel=int(checkpoint.get("fused_channel", 4)),
         attention_dropout=float(checkpoint.get("attention_dropout", checkpoint.get("dropout", 0.0))),
         transformer_heads=int(checkpoint.get("transformer_heads", 4)),
         transformer_ffn_mult=float(checkpoint.get("transformer_ffn_mult", 4.0)),
