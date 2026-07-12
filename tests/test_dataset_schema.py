@@ -6,11 +6,14 @@ import numpy as np
 
 from src.align_modalities import align_event
 from src.dataset import (
+    BATCH1_CHANNEL_NAMES,
     CHANNEL_NAMES,
     LEGACY_CHANNEL_NAMES,
     FloodSequenceDataset,
     channel_names_for_data,
     channel_names_from_checkpoint,
+    inspect_dataset_schema,
+    validate_checkpoint_data_schema,
 )
 from src.fuse_dynamic_gate import fuse_event
 from src.generate_synthetic import generate_event
@@ -34,7 +37,7 @@ def test_default_and_legacy_channel_schemas_are_both_loadable(tmp_path: Path) ->
     legacy = FloodSequenceDataset(fused_dir, [0], input_len=2, lead_time=1, channel_names="legacy")
     x_current, _ = current[0]
     x_legacy, _ = legacy[0]
-    assert x_current.shape[1] == len(CHANNEL_NAMES) == 19
+    assert x_current.shape[1] == len(CHANNEL_NAMES) == 23
     assert x_legacy.shape[1] == len(LEGACY_CHANNEL_NAMES) == 13
     assert channel_names_for_data(fused_dir) == CHANNEL_NAMES
 
@@ -46,4 +49,18 @@ def test_arbitrary_channel_order_and_checkpoint_compatibility(tmp_path: Path) ->
     x, _ = dataset[0]
     assert x.shape[1] == len(names)
     assert channel_names_from_checkpoint({"input_channels": 13}) == LEGACY_CHANNEL_NAMES
+    assert channel_names_from_checkpoint({"input_channels": 19}) == BATCH1_CHANNEL_NAMES
     assert channel_names_from_checkpoint({"input_channels": len(names), "channel_names": list(names)}) == names
+
+
+def test_checkpoint_data_schema_validates_channel_order_and_rain_version(tmp_path: Path) -> None:
+    fused_dir = _make_fused_event(tmp_path)
+    names = ("meteo", "rain_current", "rain_accum_6")
+    schema = inspect_dataset_schema(fused_dir, names)
+    checkpoint = {"input_channels": len(names), "channel_names": list(names), "data_schema": schema}
+    current = validate_checkpoint_data_schema(checkpoint, fused_dir)
+    assert current["checkpoint_schema_compatibility"] == "validated"
+
+    incompatible = {**checkpoint, "data_schema": {**schema, "rain_feature_version": "future_v9"}}
+    with np.testing.assert_raises_regex(ValueError, "rain feature version"):
+        validate_checkpoint_data_schema(incompatible, fused_dir)

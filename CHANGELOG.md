@@ -3,6 +3,26 @@
 All notable engineering changes are recorded here. Historical benchmark
 results are not rewritten unless they are reproduced by the current code.
 
+## Unreleased - Batch 2 Rainfall And Schema
+
+### Added
+
+- Causal `rain_current`, `rain_accum_3/6/12`, `rain_max_recent_6`, and
+  `rain_trend_3` event fields.
+- Versioned channel registry with named `legacy`, `batch1`, `default`, and
+  rainfall ablation channel sets.
+- Checkpoint `data_schema` manifests and pre-inference compatibility checks.
+- Per-event evaluation CSV/JSON output.
+- A/B/C input-ablation runner with aggregate and per-event delta figures.
+
+### Verified
+
+- 23-channel CPU end-to-end smoke test.
+- Legacy 13-channel checkpoint reproduced its original 60-event metrics.
+- Controlled 20-event, single-seed rainfall ablation completed with fixed
+  split, budget, and threshold. The cumulative-rain variant improved all three
+  held-out events, but is not presented as a formal multi-seed conclusion.
+
 ## Unreleased - Batch 1 Trustworthiness
 
 ### Added

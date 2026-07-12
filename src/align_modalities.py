@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
+from .data.transforms import RAIN_FEATURE_NAMES, RAIN_FEATURE_VERSION, derive_rain_features
 from .utils import ensure_dir, list_npz_files, to_float32_dict
 
 
@@ -258,7 +259,20 @@ def align_event(
         "gis_observation_time": gis_observation_time,
         "soc_latest_observation_time": soc_latest_observation_time,
     }
-    for key in ("depth_scale_mode", "depth_min", "depth_max", "depth_unit"):
+    rain_features = derive_rain_features(raw["rain"])
+    for key in RAIN_FEATURE_NAMES:
+        out[key] = raw[key].astype(np.float32) if key in raw.files else rain_features[key]
+    out["rain_feature_version"] = (
+        raw["rain_feature_version"] if "rain_feature_version" in raw.files else np.array(RAIN_FEATURE_VERSION)
+    )
+    for key in (
+        "depth_scale_mode",
+        "depth_min",
+        "depth_max",
+        "depth_unit",
+        "data_schema_version",
+        "channel_registry_version",
+    ):
         if key in raw.files:
             out[key] = raw[key]
     np.savez_compressed(out_path, **to_float32_dict(out))

@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from .data.schemas import depth_scale_from_checkpoint, make_risk_threshold
-from .dataset import FloodSequenceDataset, channel_names_from_checkpoint
+from .dataset import FloodSequenceDataset, channel_names_from_checkpoint, validate_checkpoint_data_schema
 from .metrics import all_metrics
 from .model_variants import (
     build_model_from_checkpoint,
@@ -110,6 +110,7 @@ def evaluate_checkpoint(
     model_type = checkpoint_model_type(ckpt)
     depth_scale = depth_scale_from_checkpoint(ckpt)
     channel_names = channel_names_from_checkpoint(ckpt)
+    data_schema = validate_checkpoint_data_schema(ckpt, fused_dir)
     loss_config = LossConfig.from_checkpoint(ckpt)
 
     files = [p for p in list_npz_files(fused_dir) if p.name.startswith("event_")]
@@ -182,6 +183,7 @@ def evaluate_checkpoint(
     metrics["risk_threshold"] = make_risk_threshold(eval_threshold, depth_scale).to_dict()
     metrics["depth_scale"] = depth_scale.to_dict()
     metrics["channel_names"] = list(channel_names)
+    metrics["data_schema"] = data_schema
     metrics["loss_config"] = loss_config.to_dict()
     metrics["device"] = str(device)
     metrics["amp"] = bool(amp and device.type == "cuda")

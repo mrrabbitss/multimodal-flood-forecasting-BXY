@@ -7,6 +7,7 @@ from typing import Iterable
 
 import numpy as np
 
+from .transforms import RAIN_FEATURE_NAMES, derive_rain_features
 from ..utils import list_npz_files, save_json
 
 
@@ -85,6 +86,20 @@ def validate_realtime_causality(
                             "strict causality cannot be audited because selected timestamp metadata is missing",
                         )
                     )
+
+            if "rain" in data.files:
+                expected_rain = derive_rain_features(data["rain"])
+                for field in RAIN_FEATURE_NAMES:
+                    if field in data.files and not np.allclose(data[field], expected_rain[field], atol=1e-6):
+                        violations.append(
+                            CausalityViolation(
+                                path.name,
+                                None,
+                                field,
+                                None,
+                                "materialized rain feature does not match the causal rolling definition",
+                            )
+                        )
 
             input_end_indices = range(input_len - 1, len(anchors) - lead_time)
             for input_end_index in input_end_indices:

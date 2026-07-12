@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from .data.schemas import depth_scale_from_checkpoint, make_risk_threshold
-from .dataset import FloodSequenceDataset, channel_names_from_checkpoint
+from .dataset import FloodSequenceDataset, channel_names_from_checkpoint, validate_checkpoint_data_schema
 from .metrics import all_metrics
 from .model import ConvLSTMForecastNet
 from .utils import ensure_dir, list_npz_files, save_json
@@ -70,6 +70,7 @@ def main() -> None:
     threshold = float(args.threshold if args.threshold is not None else base.get("threshold", 0.30))
     channel_names = channel_names_from_checkpoint(base)
     depth_scale = depth_scale_from_checkpoint(base)
+    data_schema = validate_checkpoint_data_schema(base, args.fused_dir)
 
     for path, checkpoint in zip(checkpoint_paths, checkpoints):
         if int(checkpoint.get("input_len", input_len)) != input_len or int(checkpoint.get("lead_time", lead_time)) != lead_time:
@@ -78,6 +79,7 @@ def main() -> None:
             raise ValueError(f"Checkpoint {path} uses a different split; ensemble would not be comparable.")
         if channel_names_from_checkpoint(checkpoint) != channel_names:
             raise ValueError(f"Checkpoint {path} uses a different channel schema.")
+        validate_checkpoint_data_schema(checkpoint, args.fused_dir)
 
     files = [p for p in list_npz_files(args.fused_dir) if p.name.startswith("event_")]
     train_idx, val_idx, test_idx = FloodSequenceDataset.split_indices(
@@ -114,6 +116,7 @@ def main() -> None:
             "risk_threshold": make_risk_threshold(threshold, depth_scale).to_dict(),
             "depth_scale": depth_scale.to_dict(),
             "channel_names": list(channel_names),
+            "data_schema": data_schema,
             "n_models": len(models),
             "checkpoint_paths": [str(path) for path in checkpoint_paths],
             "train_events": train_idx,

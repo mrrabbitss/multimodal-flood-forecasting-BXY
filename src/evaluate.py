@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from pathlib import Path
 
 import numpy as np
@@ -8,11 +9,22 @@ import torch
 from torch.utils.data import DataLoader
 
 from .data.schemas import depth_scale_from_checkpoint, make_risk_threshold
-from .dataset import FloodSequenceDataset, channel_names_from_checkpoint
+from .dataset import FloodSequenceDataset, channel_names_from_checkpoint, validate_checkpoint_data_schema
 from .metrics import all_metrics
 from .model import ConvLSTMForecastNet
 from .training.losses import LossConfig, build_loss
 from .utils import ensure_dir, list_npz_files, save_json, set_seed
+
+
+def write_per_event_csv(rows: list[dict], path: Path) -> None:
+    if not rows:
+        return
+    fieldnames = ["event_id", "num_samples", "mae", "rmse", "csi", "f1", "far", "recall_pod", "peak_depth_error"]
+    extra = sorted(key for key in rows[0] if key not in fieldnames)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames + extra)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def main() -> None:
@@ -25,6 +37,7 @@ def main() -> None:
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--threshold", type=float, default=None)
+    parser.add_argument("--per_event", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -37,6 +50,7 @@ def main() -> None:
     threshold = float(args.threshold if args.threshold is not None else ckpt.get("threshold", 0.30))
     depth_scale = depth_scale_from_checkpoint(ckpt)
     channel_names = channel_names_from_checkpoint(ckpt)
+    data_schema = validate_checkpoint_data_schema(ckpt, args.fused_dir)
     loss_config = LossConfig.from_checkpoint(ckpt)
     split_seed = ckpt.get("split_seed", args.seed)
     shuffle_split = bool(ckpt.get("shuffle_split", False))
@@ -66,13 +80,24 @@ def main() -> None:
     model.eval()
 
     preds, targets = [], []
+    event_predictions: dict[str, list[np.ndarray]] = {}
+    event_targets: dict[str, list[np.ndarray]] = {}
     loss_values: dict[str, list[float]] = {}
+    sample_cursor = 0
     with torch.no_grad():
         for x, y in loader:
             x = x.to(device)
             pred = model(x).cpu().numpy()
             preds.append(pred)
-            targets.append(y.numpy())
+            target_batch = y.numpy()
+            targets.append(target_batch)
+            if args.per_event:
+                batch_samples = test_ds.samples[sample_cursor : sample_cursor + pred.shape[0]]
+                for local_index, sample in enumerate(batch_samples):
+                    event_id = sample.file_path.stem
+                    event_predictions.setdefault(event_id, []).append(pred[local_index : local_index + 1])
+                    event_targets.setdefault(event_id, []).append(target_batch[local_index : local_index + 1])
+                sample_cursor += pred.shape[0]
             breakdown = build_loss(torch.from_numpy(pred), y, loss_config)
             for key, value in breakdown.detached_values().items():
                 loss_values.setdefault(key, []).append(value)
@@ -85,15 +110,31 @@ def main() -> None:
     metrics["num_test_samples"] = int(len(test_ds))
     metrics["test_events"] = test_idx
     metrics["best_epoch"] = int(ckpt.get("best_epoch", 0))
+    metrics["parameter_count"] = int(
+        ckpt.get("parameter_count", sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad))
+    )
     metrics["split_seed"] = int(split_seed)
     metrics["shuffle_split"] = bool(shuffle_split)
     metrics["threshold"] = float(threshold)
     metrics["risk_threshold"] = make_risk_threshold(threshold, depth_scale).to_dict()
     metrics["depth_scale"] = depth_scale.to_dict()
     metrics["channel_names"] = list(channel_names)
+    metrics["data_schema"] = data_schema
     metrics["loss_config"] = loss_config.to_dict()
 
     out_dir = ensure_dir(Path(args.output_dir) / "metrics")
+    per_event_rows = []
+    if args.per_event:
+        for event_id in sorted(event_predictions):
+            event_pred = np.concatenate(event_predictions[event_id], axis=0)
+            event_target = np.concatenate(event_targets[event_id], axis=0)
+            row = all_metrics(event_pred, event_target, threshold=threshold)
+            row["event_id"] = event_id
+            row["num_samples"] = int(event_pred.shape[0])
+            per_event_rows.append(row)
+        write_per_event_csv(per_event_rows, out_dir / "per_event_metrics.csv")
+        save_json({"rows": per_event_rows, "threshold": threshold}, out_dir / "per_event_metrics.json")
+        metrics["per_event_metrics_file"] = str(out_dir / "per_event_metrics.csv")
     save_json(metrics, out_dir / "eval_metrics.json")
     print(metrics)
 

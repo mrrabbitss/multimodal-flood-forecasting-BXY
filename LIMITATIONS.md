@@ -22,3 +22,7 @@
 - The project does not yet include multi-seed corrected-schema experiments,
   public-data external validation, calibrated uncertainty, or a physical
   hydraulic model.
+- The Batch 2 rainfall comparison is a controlled 20-event, single-seed,
+  three-epoch diagnostic with three held-out events. Its improvement must be
+  confirmed by the later multi-seed experiment batch before becoming a main
+  benchmark claim.

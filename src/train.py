@@ -17,6 +17,7 @@ from .dataset import (
     channel_names_for_data,
     channel_names_from_checkpoint,
     infer_num_channels,
+    inspect_dataset_schema,
     resolve_channel_names,
 )
 from .metrics import all_metrics
@@ -210,6 +211,7 @@ def main() -> None:
         if args.input_channels == "auto"
         else resolve_channel_names(args.input_channels)
     )
+    data_schema = inspect_dataset_schema(args.fused_dir, channel_names)
     threshold_candidates = sorted({float(x) for x in parse_float_list(args.threshold_candidates) + [args.threshold]})
     class_threshold = args.threshold if args.class_threshold is None else args.class_threshold
     risk_threshold = make_risk_threshold(args.threshold, depth_scale)
@@ -265,6 +267,8 @@ def main() -> None:
         use_residual=args.use_residual,
         fused_channel=fused_channel,
     ).to(device)
+    parameter_count = int(sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad))
+    print(f"Trainable parameters: {parameter_count:,}")
     init_checkpoint = None
     if args.init_checkpoint:
         init_checkpoint = torch.load(args.init_checkpoint, map_location=device)
@@ -316,8 +320,10 @@ def main() -> None:
                 "model_state": model.state_dict(),
                 "input_channels": input_channels,
                 "channel_names": list(channel_names),
+                "data_schema": data_schema,
                 "fused_channel": fused_channel,
                 "hidden_channels": args.hidden,
+                "parameter_count": parameter_count,
                 "num_layers": args.num_layers,
                 "dropout": args.dropout,
                 "output_max": depth_scale.max_value,
@@ -472,6 +478,8 @@ def main() -> None:
     test_metrics["risk_threshold"] = make_risk_threshold(test_threshold, depth_scale).to_dict()
     test_metrics["depth_scale"] = depth_scale.to_dict()
     test_metrics["channel_names"] = list(channel_names)
+    test_metrics["parameter_count"] = parameter_count
+    test_metrics["data_schema"] = data_schema
     test_metrics["loss_threshold"] = float(args.loss_threshold)
     test_metrics["auto_threshold"] = bool(args.auto_threshold)
     test_metrics["threshold_metric"] = args.threshold_metric

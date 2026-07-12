@@ -6,7 +6,14 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from .data.schemas import DEFAULT_DEPTH_SCALE, DepthScale, make_depth_scale
+from .data.schemas import (
+    CHANNEL_REGISTRY_VERSION,
+    DATA_SCHEMA_VERSION,
+    DEFAULT_DEPTH_SCALE,
+    DepthScale,
+    make_depth_scale,
+)
+from .data.transforms import RAIN_FEATURE_VERSION, derive_rain_features
 from .utils import ensure_dir, gaussian_blob, minmax_norm, save_json, set_seed, smooth2d, to_float32_dict
 
 
@@ -211,6 +218,7 @@ def generate_event(
 ) -> dict:
     rng = np.random.default_rng(seed + event_id * 1009)
     rain = make_rain_series(t, rng)
+    rain_features = derive_rain_features(rain)
     fields = make_static_fields(h, w, rng)
     gt_depth = simulate_gt_depth(rain, fields, rng, depth_max=depth_scale.max_value)
     meteo_depth = make_meteo_depth(gt_depth, rain, rng, depth_max=depth_scale.max_value)
@@ -225,7 +233,11 @@ def generate_event(
         "depth_min": np.array(depth_scale.min_value, dtype=np.float32),
         "depth_max": np.array(depth_scale.max_value, dtype=np.float32),
         "depth_unit": np.array(depth_scale.unit),
+        "data_schema_version": np.array(DATA_SCHEMA_VERSION, dtype=np.int32),
+        "channel_registry_version": np.array(CHANNEL_REGISTRY_VERSION),
         "rain": rain,
+        "rain_feature_version": np.array(RAIN_FEATURE_VERSION),
+        **rain_features,
         "gt_depth": gt_depth,
         "meteo_times": np.arange(t, dtype=np.int32),
         "meteo_depth": meteo_depth,
@@ -268,6 +280,9 @@ def main() -> None:
             "w": args.w,
             "seed": args.seed,
             "depth_scale": depth_scale.to_dict(),
+            "rain_feature_version": RAIN_FEATURE_VERSION,
+            "data_schema_version": DATA_SCHEMA_VERSION,
+            "channel_registry_version": CHANNEL_REGISTRY_VERSION,
             "description": "Synthetic multimodal flood events with latent ground-truth depth and asynchronous observations.",
         },
         out_dir / "metadata.json",

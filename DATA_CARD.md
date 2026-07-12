@@ -25,7 +25,7 @@ meters. Physical-unit generation is reserved for a later phase.
 | Group | Fields | Definition |
 |---|---|---|
 | Latent target | `gt_depth[T,H,W]` | Synthetic normalized water-depth field |
-| Rain | `rain[T]` | Normalized storm hyetograph; not yet a model input in Batch 1 |
+| Rain | `rain[T]`, `rain_current`, `rain_accum_3/6/12`, `rain_max_recent_6`, `rain_trend_3` | Normalized storm hyetograph and causal rolling features |
 | Meteorology | `meteo_depth[T,H,W]` | Frequent noisy depth proxy |
 | Satellite | `sat_times`, `sat_base`, `sat_quality` | Sparse wet-area proxy and source quality |
 | GIS | `gis_times`, `gis_risk`, `gis_quality` | Static event-scale risk map and version quality |
@@ -53,9 +53,15 @@ observation timestamps are also stored for causality auditing.
 
 ## Input Schemas
 
-New runs use 19 named channels. Historical checkpoints with 13 channels are
-loaded through an explicit legacy schema. Channel names and order are saved in
-new checkpoints; silent shape-based remapping is not allowed.
+Current runs use 23 named channels, including current and accumulated rainfall.
+Batch 1's 19-channel set remains available as `batch1`. Historical checkpoints
+with 13 channels are loaded through an explicit `legacy` schema. Channel names,
+order, registry version, and rainfall feature version are saved in new
+checkpoints; silent shape-based remapping is not allowed.
+
+Accumulated rainfall fields store causal rolling sums. Before model input they
+are divided by their 3/6/12-step window lengths to keep input scale stable.
+`rain_trend_3` is signed; the other rainfall input channels are in `[0,1]`.
 
 ## Alignment Modes
 

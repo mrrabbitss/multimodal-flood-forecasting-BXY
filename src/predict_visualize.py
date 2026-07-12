@@ -8,7 +8,7 @@ import numpy as np
 import torch
 
 from .data.schemas import depth_scale_from_checkpoint
-from .dataset import FloodSequenceDataset, channel_names_from_checkpoint
+from .dataset import FloodSequenceDataset, channel_names_from_checkpoint, validate_checkpoint_data_schema
 from .model import ConvLSTMForecastNet
 from .utils import ensure_dir, list_npz_files, set_seed
 
@@ -57,6 +57,7 @@ def main() -> None:
     lead_time = int(ckpt["lead_time"])
     depth_scale = depth_scale_from_checkpoint(ckpt)
     channel_names = channel_names_from_checkpoint(ckpt)
+    validate_checkpoint_data_schema(ckpt, args.fused_dir)
     split_seed = ckpt.get("split_seed", args.seed)
     shuffle_split = bool(ckpt.get("shuffle_split", False))
 

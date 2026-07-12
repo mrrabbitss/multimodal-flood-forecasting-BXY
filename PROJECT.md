@@ -91,6 +91,19 @@ changes use a separate 19-channel schema and do not relabel these results.
 CSI is numerically identical to IoU under the current binary flood-mask
 definition.
 
+## Batch 2 Rainfall Schema
+
+The current default input schema has 23 named channels and adds causal current
+and 3/6/12-step accumulated rainfall. New checkpoints save a versioned data
+schema, exact channel order, and rainfall transform version. The 19-channel
+Batch 1 and 13-channel historical schemas remain explicitly loadable.
+
+A controlled 20-event, three-epoch experiment found that the 17-channel
+legacy-plus-accumulated-rain variant reduced MAE from `0.149075` to `0.077585`
+and increased CSI from `0.652258` to `0.691391`. All three held-out events
+improved, but this remains a single-seed diagnostic rather than a formal main
+benchmark. See `RAIN_INPUT_ABLATION.md`.
+
 ## GitHub Packaging
 
 The repository intentionally ignores generated data, checkpoints, and run

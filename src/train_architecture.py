@@ -16,6 +16,7 @@ from .dataset import (
     channel_names_for_data,
     channel_names_from_checkpoint,
     infer_num_channels,
+    inspect_dataset_schema,
     resolve_channel_names,
 )
 from .model_variants import build_forecast_model, count_parameters, model_display_name, normalize_model_type
@@ -90,6 +91,7 @@ def main() -> None:
         if args.input_channels == "auto"
         else resolve_channel_names(args.input_channels)
     )
+    data_schema = inspect_dataset_schema(args.fused_dir, channel_names)
     threshold_candidates = sorted({float(x) for x in parse_float_list(args.threshold_candidates) + [args.threshold]})
     class_threshold = args.threshold if args.class_threshold is None else args.class_threshold
     loss_config = LossConfig(
@@ -197,6 +199,7 @@ def main() -> None:
                 "model_label": model_display_name(args.model_type),
                 "input_channels": input_channels,
                 "channel_names": list(channel_names),
+                "data_schema": data_schema,
                 "fused_channel": fused_channel,
                 "hidden_channels": args.hidden,
                 "num_layers": args.num_layers,
@@ -361,6 +364,7 @@ def main() -> None:
     test_metrics["risk_threshold"] = make_risk_threshold(test_threshold, depth_scale).to_dict()
     test_metrics["depth_scale"] = depth_scale.to_dict()
     test_metrics["channel_names"] = list(channel_names)
+    test_metrics["data_schema"] = data_schema
     test_metrics["loss_threshold"] = float(args.loss_threshold)
     test_metrics["auto_threshold"] = bool(args.auto_threshold)
     test_metrics["threshold_metric"] = args.threshold_metric

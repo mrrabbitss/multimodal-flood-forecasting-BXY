@@ -64,6 +64,7 @@ def main() -> None:
     parser.add_argument("--dropout_values", type=str, default="0.0")
     parser.add_argument("--input_len", type=int, default=12)
     parser.add_argument("--lead_time", type=int, default=6)
+    parser.add_argument("--input_channels", type=str, default="auto")
     parser.add_argument("--epochs", type=int, default=8)
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--threshold", type=float, default=0.30)
@@ -108,6 +109,8 @@ def main() -> None:
                         str(args.input_len),
                         "--lead_time",
                         str(args.lead_time),
+                        "--input_channels",
+                        args.input_channels,
                         "--epochs",
                         str(args.epochs),
                         "--batch_size",

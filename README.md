@@ -110,7 +110,7 @@ flowchart LR
     F --> H["Latency and GPU memory comparison"]
 ```
 
-## Trustworthiness Upgrade
+## Trustworthiness And Rain Schema Upgrade
 
 The first engineering-hardening batch is implemented with backward
 compatibility:
@@ -122,8 +122,9 @@ compatibility:
   remains available for reproducibility.
 - Social reports now include local observation, count, confidence, and age
   maps, so a valid zero-depth report differs from no observation.
-- The current 19-channel schema includes `miss_gis`, `dt_gis`, all `q_*`
-  fields, and the social observation mask.
+- Batch 1's 19-channel schema remains available as `batch1`. The current
+  23-channel default adds causal current and accumulated rainfall while keeping
+  `miss_gis`, `dt_gis`, all `q_*` fields, and the social observation mask.
 - Training and validation use the same loss configuration and save each loss
   component.
 - The realtime pipeline fails fast when an input selects a future timestamp.
@@ -132,6 +133,32 @@ Historical 13-channel checkpoints remain loadable. The preserved Conv-LSTM
 checkpoint was re-evaluated through the compatibility path at threshold `0.28`
 and reproduced `MAE=0.0547086`, `RMSE=0.0714920`, `CSI=0.9370353`, and
 `F1=0.9674943`.
+
+Rainfall features use only current and past values: `rain_current`, rolling
+sums over 3/6/12 steps, recent 6-step maximum, and 3-step trend. New
+checkpoints save the exact channel order, registry version, and rain-feature
+version; evaluation rejects incompatible schemas before model inference.
+
+## Rain Input Ablation
+
+![Rain input ablation](docs/figures/rain_input_ablation.png)
+
+A controlled 20-event synthetic experiment compared the same Conv-LSTM budget
+with A: legacy 13 channels, B: A plus current rain, and C: A plus current and
+3/6/12-step accumulated rain.
+
+| Variant | Channels | Parameters | MAE | RMSE | CSI | F1 | FAR |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| A: legacy inputs | 13 | 13,177 | 0.1491 | 0.1771 | 0.6523 | 0.7895 | 0.3477 |
+| B: + current rain | 14 | 13,285 | 0.1065 | 0.1414 | 0.6584 | 0.7940 | 0.3416 |
+| C: + current and accumulated rain | 17 | 13,609 | 0.0776 | 0.0975 | 0.6914 | 0.8175 | 0.3083 |
+
+![Per-event rain deltas](docs/figures/rain_per_event_deltas.png)
+
+Both rainfall variants improved CSI on all three held-out events in this small
+controlled run. C reduced MAE by `48.0%` and increased CSI by `0.0391` versus
+A while increasing parameters by `3.3%`. This is a single-seed, three-epoch diagnostic, not a replacement for the
+60-event historical benchmark or a multi-seed formal result.
 
 ## Data Design
 
@@ -142,6 +169,7 @@ noise, delay, and missingness:
 | Modality | Main Fields | Description |
 |---|---|---|
 | Meteorology | `meteo_depth` | High-frequency estimated water depth |
+| Rainfall | `rain_current`, `rain_accum_3/6/12` | Causal current and rolling accumulated rainfall |
 | Remote sensing | `sat_base` | Low-frequency satellite flood/wet-area proxy |
 | GIS risk | `gis_risk` | Static background risk map |
 | Social reports | `soc_depth`, `soc_observation_mask`, `soc_count_map` | Spatially aggregated crowdsourced reports and coverage |
@@ -163,7 +191,7 @@ input_len = 12
 lead_time = 6
 height = 64
 width = 64
-channels = 19 (new default) or 13 (legacy checkpoint compatibility)
+channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatibility)
 ```
 
 ## Repository Structure
@@ -187,6 +215,7 @@ channels = 19 (new default) or 13 (legacy checkpoint compatibility)
 |   |-- fuse_dynamic_gate.py           # Dynamic gated fusion
 |   |-- dataset.py                     # Sliding-window dataset
 |   |-- data/schemas.py                # Depth and threshold metadata
+|   |-- data/transforms.py             # Causal rainfall feature derivation
 |   |-- data/validation.py             # Realtime causality checks
 |   |-- training/losses.py             # Shared train/validation loss
 |   |-- model.py                       # Original Conv-LSTM model
@@ -198,6 +227,7 @@ channels = 19 (new default) or 13 (legacy checkpoint compatibility)
 |   |-- train_architecture.py          # Architecture-variant training
 |   |-- evaluate_architecture.py       # Metrics, latency, and memory evaluation
 |   |-- compare_architectures.py       # Three-model comparison runner
+|   |-- run_input_ablation.py          # A/B/C rainfall input comparison
 |   `-- make_model_showcase.py         # Publication-ready figures and report
 |-- tests/                             # Correctness and compatibility tests
 |-- data/                              # Generated data, ignored by git
@@ -270,6 +300,18 @@ Train the original Conv-LSTM:
 
 ```bash
 python -m src.train --fused_dir data/fused --epochs 10 --batch_size 4 --hidden 24
+```
+
+Run the controlled rainfall input ablation:
+
+```bash
+python -m src.run_input_ablation \
+  --fused_dir data/fused \
+  --output_root runs/input_ablation \
+  --epochs 3 \
+  --seed 44 \
+  --split_seed 44 \
+  --threshold 0.28
 ```
 
 Evaluate a checkpoint:

@@ -5,6 +5,8 @@ from typing import Any, Literal, Mapping
 
 
 DepthScaleMode = Literal["normalized", "physical"]
+DATA_SCHEMA_VERSION = 2
+CHANNEL_REGISTRY_VERSION = "rain_schema_v2"
 
 
 @dataclass(frozen=True)
