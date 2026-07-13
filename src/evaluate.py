@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from .batch4_engine import benchmark_model
+from .batch4_engine import benchmark_model, configure_determinism
 from .data.schemas import depth_scale_from_checkpoint, make_risk_threshold
 from .dataset import FloodSequenceDataset, channel_names_from_checkpoint, validate_checkpoint_data_schema
 from .metrics import all_metrics
@@ -44,6 +44,7 @@ def main() -> None:
     args = parser.parse_args()
 
     set_seed(args.seed)
+    configure_determinism(True)
     device = torch.device("cuda" if args.device == "auto" and torch.cuda.is_available() else ("cpu" if args.device == "auto" else args.device))
     if device.type == "cpu":
         torch.set_num_threads(min(4, max(1, torch.get_num_threads())))
@@ -81,13 +82,6 @@ def main() -> None:
     ).to(device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
-    efficiency = benchmark_model(
-        model,
-        loader,
-        device,
-        warmup_batches=args.warmup_batches,
-        benchmark_batches=args.benchmark_batches,
-    )
 
     preds, targets = [], []
     event_predictions: dict[str, list[np.ndarray]] = {}
@@ -111,6 +105,7 @@ def main() -> None:
             breakdown = build_loss(torch.from_numpy(pred), y, loss_config)
             for key, value in breakdown.detached_values().items():
                 loss_values.setdefault(key, []).append(value)
+            del x
     pred_np = np.concatenate(preds, axis=0)
     target_np = np.concatenate(targets, axis=0)
     metrics = all_metrics(pred_np, target_np, threshold=threshold)
@@ -131,6 +126,15 @@ def main() -> None:
     metrics["channel_names"] = list(channel_names)
     metrics["data_schema"] = data_schema
     metrics["loss_config"] = loss_config.to_dict()
+    # Benchmark after metric inference so performance warmup cannot influence
+    # the numerical path used for the reproducibility audit.
+    efficiency = benchmark_model(
+        model,
+        loader,
+        device,
+        warmup_batches=args.warmup_batches,
+        benchmark_batches=args.benchmark_batches,
+    )
     metrics.update(efficiency)
     metrics["benchmark"] = {
         "device": str(device),
