@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+from .batch4_engine import benchmark_model
 from .data.schemas import depth_scale_from_checkpoint, make_risk_threshold
 from .dataset import FloodSequenceDataset, channel_names_from_checkpoint, validate_checkpoint_data_schema
 from .metrics import all_metrics
@@ -38,6 +39,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--threshold", type=float, default=None)
     parser.add_argument("--per_event", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--warmup_batches", type=int, default=2)
+    parser.add_argument("--benchmark_batches", type=int, default=20)
     args = parser.parse_args()
 
     set_seed(args.seed)
@@ -78,6 +81,13 @@ def main() -> None:
     ).to(device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
+    efficiency = benchmark_model(
+        model,
+        loader,
+        device,
+        warmup_batches=args.warmup_batches,
+        benchmark_batches=args.benchmark_batches,
+    )
 
     preds, targets = [], []
     event_predictions: dict[str, list[np.ndarray]] = {}
@@ -121,6 +131,13 @@ def main() -> None:
     metrics["channel_names"] = list(channel_names)
     metrics["data_schema"] = data_schema
     metrics["loss_config"] = loss_config.to_dict()
+    metrics.update(efficiency)
+    metrics["benchmark"] = {
+        "device": str(device),
+        "batch_size": args.batch_size,
+        "warmup_batches": args.warmup_batches,
+        "benchmark_batches": args.benchmark_batches,
+    }
 
     out_dir = ensure_dir(Path(args.output_dir) / "metrics")
     per_event_rows = []
