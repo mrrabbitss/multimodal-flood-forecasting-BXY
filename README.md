@@ -160,6 +160,34 @@ controlled run. C reduced MAE by `48.0%` and increased CSI by `0.0391` versus
 A while increasing parameters by `3.3%`. This is a single-seed, three-epoch diagnostic, not a replacement for the
 60-event historical benchmark or a multi-seed formal result.
 
+## Reproducible Experiment System
+
+Batch 3 extends that diagnostic to paired seeds `42`, `44`, and `52`, all using
+the same event split and three-epoch Conv-LSTM budget.
+
+| Input variant | MAE mean +/- std | CSI mean +/- std |
+|---|---:|---:|
+| Legacy 13 channels | 0.1434 +/- 0.0132 | 0.6515 +/- 0.0013 |
+| + current rain | 0.0969 +/- 0.0115 | 0.6799 +/- 0.0427 |
+| + current and accumulated rain | **0.0824 +/- 0.0042** | **0.6885 +/- 0.0345** |
+
+![Multi-seed rainfall results](docs/figures/multiseed_rain_error_bars.png)
+
+The accumulated-rain input cuts mean MAE by `42.5%` versus the legacy input.
+Its paired per-event MAE improvement has a bootstrap 95% CI of
+`[0.0191, 0.1112]`. The CSI improvement interval crosses zero, so the project
+does not claim a statistically resolved CSI gain from this three-event test.
+
+![Paired bootstrap intervals](docs/figures/paired_bootstrap_ci.png)
+
+![Forecast lead-time curves](docs/figures/lead_time_curves.png)
+
+The lead-time diagnostic reports MAE, RMSE, CSI, FAR, and POD at
+`1/3/6/12/24` steps using a common threshold. Performance falls sharply at
+long horizons; lead `24` contains only three test samples and is explicitly a
+stress test. Full settings, modality smoke results, and reproducibility notes
+are in [BATCH3_EXPERIMENTS.md](BATCH3_EXPERIMENTS.md).
+
 ## Data Design
 
 Each synthetic event starts from a hidden ground-truth water-depth field
@@ -228,6 +256,9 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |   |-- evaluate_architecture.py       # Metrics, latency, and memory evaluation
 |   |-- compare_architectures.py       # Three-model comparison runner
 |   |-- run_input_ablation.py          # A/B/C rainfall input comparison
+|   |-- run_multiseed.py               # Paired multi-seed aggregation and bootstrap CI
+|   |-- run_lead_time.py               # 1/3/6/12/24-step evaluation runner
+|   |-- experiments/                   # Event splits and statistical summaries
 |   `-- make_model_showcase.py         # Publication-ready figures and report
 |-- tests/                             # Correctness and compatibility tests
 |-- data/                              # Generated data, ignored by git

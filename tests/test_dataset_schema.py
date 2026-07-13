@@ -13,6 +13,7 @@ from src.dataset import (
     channel_names_for_data,
     channel_names_from_checkpoint,
     inspect_dataset_schema,
+    resolve_channel_names,
     validate_checkpoint_data_schema,
 )
 from src.fuse_dynamic_gate import fuse_event
@@ -64,3 +65,14 @@ def test_checkpoint_data_schema_validates_channel_order_and_rain_version(tmp_pat
     incompatible = {**checkpoint, "data_schema": {**schema, "rain_feature_version": "future_v9"}}
     with np.testing.assert_raises_regex(ValueError, "rain feature version"):
         validate_checkpoint_data_schema(incompatible, fused_dir)
+
+
+def test_batch3_modality_channel_sets_are_named_and_nonempty() -> None:
+    full = resolve_channel_names("full")
+    no_satellite = resolve_channel_names("without_satellite")
+    no_social = resolve_channel_names("without_social")
+    no_metadata = resolve_channel_names("without_meta")
+    assert "satellite" in full and "satellite" not in no_satellite
+    assert "social" in full and "social" not in no_social
+    assert "miss_sat" not in no_metadata and "fused_depth" in no_metadata
+    assert len(no_satellite) < len(full)

@@ -96,6 +96,27 @@ CHANNEL_SETS: dict[str, tuple[str, ...]] = {
     "rain_only": RAIN_INPUT_CHANNEL_NAMES,
     "meteo_only": ("meteo",),
     "fused_only": ("fused_depth",),
+    "raw_modalities_only": (
+        "meteo", "satellite", "gis", "social", *RAIN_INPUT_CHANNEL_NAMES,
+    ),
+    "raw_plus_meta": (
+        "meteo", "satellite", "gis", "social", *RAIN_INPUT_CHANNEL_NAMES,
+        "miss_sat", "miss_gis", "miss_soc", "dt_sat", "dt_gis", "dt_soc",
+        "q_sat", "q_gis", "q_soc", "n_soc", "soc_observation_mask",
+        "exposure", "drainage_penalty",
+    ),
+    "raw_plus_fused": (
+        "meteo", "satellite", "gis", "social", "fused_depth", "risk_score", *RAIN_INPUT_CHANNEL_NAMES,
+    ),
+    "raw_plus_fused_plus_meta": CHANNEL_NAMES,
+    "without_satellite": tuple(name for name in CHANNEL_NAMES if name not in {"satellite", "miss_sat", "dt_sat", "q_sat"}),
+    "without_gis": tuple(name for name in CHANNEL_NAMES if name not in {"gis", "miss_gis", "dt_gis", "q_gis"}),
+    "without_social": tuple(name for name in CHANNEL_NAMES if name not in {"social", "miss_soc", "dt_soc", "q_soc", "n_soc", "soc_observation_mask"}),
+    "without_meteo": tuple(name for name in CHANNEL_NAMES if name != "meteo"),
+    "without_meta": tuple(
+        name for name in CHANNEL_NAMES
+        if name in {"meteo", "satellite", "gis", "social", "fused_depth", "risk_score", *RAIN_INPUT_CHANNEL_NAMES}
+    ),
 }
 
 CHANNEL_INDEX: dict[str, int] = {name: index for index, name in enumerate(CHANNEL_NAMES)}

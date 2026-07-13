@@ -22,11 +22,17 @@ from .utils import ensure_dir, list_npz_files, save_json, set_seed
 
 
 BASELINE_CHANNELS = {
+    # Historical output names remain available for downstream CSV consumers.
     "persistence_meteo": "meteo",
     "persistence_sat_proxy": "satellite",
     "persistence_soc": "social",
     "persistence_fused": "fused_depth",
     "persistence_risk_score": "risk_score",
+    "meteo_persistence": "meteo",
+    "satellite_proxy": "satellite",
+    "social_persistence": "social",
+    "last_frame_persistence": "fused_depth",
+    "risk_score_persistence": "risk_score",
 }
 
 
@@ -65,6 +71,14 @@ def write_csv(rows: list[dict], path: Path) -> None:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
+
+
+def linear_extrapolation(x: np.ndarray, fused_channel: int, lead_time: int, output_max: float) -> np.ndarray:
+    if x.shape[1] < 2:
+        raise ValueError("Linear extrapolation requires at least two input frames")
+    latest = x[:, -1, fused_channel : fused_channel + 1]
+    previous = x[:, -2, fused_channel : fused_channel + 1]
+    return np.clip(latest + lead_time * (latest - previous), 0.0, output_max).astype(np.float32)
 
 
 def main() -> None:
@@ -144,18 +158,41 @@ def main() -> None:
         preds_by_name["convlstm"] = []
     for name in BASELINE_CHANNELS:
         preds_by_name[name] = []
+    if "fused_depth" in channel_names:
+        preds_by_name["linear_extrapolation"] = []
+    event_targets: dict[str, list[np.ndarray]] = {}
+    event_predictions: dict[str, dict[str, list[np.ndarray]]] = {}
+    sample_cursor = 0
 
     with torch.no_grad():
         for x, y in loader:
-            targets.append(y.numpy())
+            target_batch = y.numpy()
+            targets.append(target_batch)
             x_np = x.numpy()
-            preds_by_name["zero_depth"].append(np.zeros_like(y.numpy(), dtype=np.float32))
+            batch_predictions: dict[str, np.ndarray] = {
+                "zero_depth": np.zeros_like(target_batch, dtype=np.float32)
+            }
             for name, channel_name in BASELINE_CHANNELS.items():
                 if channel_name in channel_names:
                     channel = channel_names.index(channel_name)
-                    preds_by_name[name].append(x_np[:, -1, channel : channel + 1])
+                    batch_predictions[name] = x_np[:, -1, channel : channel + 1]
+            if "fused_depth" in channel_names:
+                batch_predictions["linear_extrapolation"] = linear_extrapolation(
+                    x_np, channel_names.index("fused_depth"), lead_time, depth_scale.max_value
+                )
             if model is not None:
-                preds_by_name["convlstm"].append(model(x.to(device)).cpu().numpy())
+                batch_predictions["convlstm"] = model(x.to(device)).cpu().numpy()
+            for name, prediction in batch_predictions.items():
+                preds_by_name[name].append(prediction)
+            batch_samples = test_ds.samples[sample_cursor : sample_cursor + target_batch.shape[0]]
+            for local_index, sample in enumerate(batch_samples):
+                event_id = sample.file_path.stem
+                event_targets.setdefault(event_id, []).append(target_batch[local_index : local_index + 1])
+                for name, prediction in batch_predictions.items():
+                    event_predictions.setdefault(name, {}).setdefault(event_id, []).append(
+                        prediction[local_index : local_index + 1]
+                    )
+            sample_cursor += target_batch.shape[0]
 
     target_np = np.concatenate(targets, axis=0)
     rows = []
@@ -166,10 +203,27 @@ def main() -> None:
         rows.extend(evaluate_arrays(name, pred_np, target_np, thresholds))
 
     rows.sort(key=lambda row: (row["threshold"], -row["csi"], row["model"]))
+    per_event_rows = []
+    for name, predictions_by_event in event_predictions.items():
+        for event_id, parts in predictions_by_event.items():
+            prediction = np.concatenate(parts, axis=0)
+            target = np.concatenate(event_targets[event_id], axis=0)
+            for threshold in thresholds:
+                row = all_metrics(prediction, target, threshold=threshold)
+                row.update(
+                    {
+                        "model": name,
+                        "event_id": event_id,
+                        "num_samples": int(prediction.shape[0]),
+                        "threshold": float(threshold),
+                    }
+                )
+                per_event_rows.append(row)
     out_dir = ensure_dir(Path(args.output_dir) / "metrics")
     save_json(
         {
             "rows": rows,
+            "per_event_rows": per_event_rows,
             "num_test_samples": int(len(test_ds)),
             "test_events": test_idx,
             "split_seed": int(split_seed),
@@ -181,6 +235,7 @@ def main() -> None:
         out_dir / "baseline_comparison.json",
     )
     write_csv(rows, out_dir / "baseline_comparison.csv")
+    write_csv(per_event_rows, out_dir / "baseline_per_event.csv")
 
     for row in rows:
         print(

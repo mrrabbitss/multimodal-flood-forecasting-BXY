@@ -120,3 +120,15 @@ runs/
 This keeps the GitHub repository lightweight and source-focused. Large artifacts
 can be published separately through GitHub Releases, cloud storage, or model
 hosting platforms.
+
+## Batch 3 Experiment System
+
+Batch 3 adds event-disjoint split manifests, paired multi-seed summaries,
+bootstrap confidence intervals, per-event baseline tables, configurable input
+and modality channel sets, and lead-time evaluation at `1/3/6/12/24` steps.
+
+On the controlled 20-event dataset, the three-seed cumulative-rain Conv-LSTM
+reaches `MAE=0.0824 +/- 0.0042` and `CSI=0.6885 +/- 0.0345`, compared with
+`MAE=0.1434 +/- 0.0132` and `CSI=0.6515 +/- 0.0013` for the legacy inputs. The
+paired MAE improvement has a positive 95% bootstrap interval; the CSI interval
+crosses zero and is reported as inconclusive. See `BATCH3_EXPERIMENTS.md`.

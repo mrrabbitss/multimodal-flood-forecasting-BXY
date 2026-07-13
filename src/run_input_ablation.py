@@ -54,6 +54,9 @@ def write_csv(rows: list[dict], path: Path) -> None:
         "mae_delta_vs_A",
         "csi_delta_vs_A",
         "csi_outcome_vs_A",
+        "mae_delta_vs_baseline",
+        "csi_delta_vs_baseline",
+        "csi_outcome_vs_baseline",
     ]
     fieldnames = [name for name in preferred if name in fields] + sorted(fields - set(preferred))
     with path.open("w", newline="", encoding="utf-8") as handle:
@@ -72,6 +75,7 @@ def build_per_event_differences(per_event: dict[str, list[dict]], baseline_name:
                 raise ValueError(f"Event {event_id!r} is absent from baseline variant {baseline_name!r}")
             base = baseline[event_id]
             csi_delta = float(row["csi"]) - float(base["csi"])
+            outcome = "win" if csi_delta > 1e-8 else ("loss" if csi_delta < -1e-8 else "tie")
             rows.append(
                 {
                     "variant": variant,
@@ -80,7 +84,10 @@ def build_per_event_differences(per_event: dict[str, list[dict]], baseline_name:
                     "csi": float(row["csi"]),
                     "mae_delta_vs_A": float(row["mae"]) - float(base["mae"]),
                     "csi_delta_vs_A": csi_delta,
-                    "csi_outcome_vs_A": "win" if csi_delta > 1e-8 else ("loss" if csi_delta < -1e-8 else "tie"),
+                    "csi_outcome_vs_A": outcome,
+                    "mae_delta_vs_baseline": float(row["mae"]) - float(base["mae"]),
+                    "csi_delta_vs_baseline": csi_delta,
+                    "csi_outcome_vs_baseline": outcome,
                 }
             )
     return rows
@@ -121,13 +128,13 @@ def plot_event_deltas(rows: list[dict], baseline_name: str, path: Path) -> None:
     axes[0].set_xticks(np.arange(1, len(variants) + 1))
     axes[0].set_xticklabels(variants)
     axes[0].axhline(0.0, color="#444444", linewidth=1)
-    axes[0].set_title("Per-event MAE Delta vs A")
+    axes[0].set_title(f"Per-event MAE delta vs {baseline_name}")
     axes[0].set_ylabel("Negative is better")
     axes[1].boxplot(csi_values, showmeans=True)
     axes[1].set_xticks(np.arange(1, len(variants) + 1))
     axes[1].set_xticklabels(variants)
     axes[1].axhline(0.0, color="#444444", linewidth=1)
-    axes[1].set_title("Per-event CSI Delta vs A")
+    axes[1].set_title(f"Per-event CSI delta vs {baseline_name}")
     axes[1].set_ylabel("Positive is better")
     for axis in axes:
         axis.tick_params(axis="x", rotation=12)
@@ -137,9 +144,16 @@ def plot_event_deltas(rows: list[dict], baseline_name: str, path: Path) -> None:
     plt.close(fig)
 
 
-def write_report(rows: list[dict], difference_rows: list[dict], path: Path, experiment_kind: str) -> None:
+def write_report(
+    rows: list[dict],
+    difference_rows: list[dict],
+    path: Path,
+    experiment_kind: str,
+    title: str = "Rain Input Ablation",
+    baseline_name: str = "A",
+) -> None:
     lines = [
-        "# Rain Input Ablation",
+        f"# {title}",
         "",
         f"Experiment kind: **{experiment_kind}**. All variants use the same event split, seed, budget, and fixed test threshold.",
         "",
@@ -152,9 +166,9 @@ def write_report(rows: list[dict], difference_rows: list[dict], path: Path, expe
             f"{row['mae']:.6f} | {row['rmse']:.6f} | "
             f"{row['csi']:.6f} | {row['f1']:.6f} | {row['far']:.6f} |"
         )
-    lines.extend(["", "## Per-event CSI outcomes versus A", ""])
+    lines.extend(["", f"## Per-event CSI outcomes versus {baseline_name}", ""])
     for variant in [row["variant"] for row in rows[1:]]:
-        outcomes = [row["csi_outcome_vs_A"] for row in difference_rows if row["variant"] == variant]
+        outcomes = [row["csi_outcome_vs_baseline"] for row in difference_rows if row["variant"] == variant]
         lines.append(
             f"- {variant}: wins={outcomes.count('win')}, ties={outcomes.count('tie')}, losses={outcomes.count('loss')}"
         )
@@ -193,6 +207,10 @@ def main() -> None:
     parser.add_argument("--early_stop_patience", type=int, default=3)
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument("--experiment_kind", choices=["smoke", "controlled", "formal"], default="controlled")
+    parser.add_argument("--report_title", default="Rain Input Ablation")
+    parser.add_argument("--report_file", default="RAIN_INPUT_ABLATION.md")
+    parser.add_argument("--aggregate_figure", default="rain_input_ablation.png")
+    parser.add_argument("--event_figure", default="rain_per_event_deltas.png")
     parser.add_argument("--skip_training", action="store_true")
     parser.add_argument("--force_retrain", action="store_true")
     parser.add_argument("--dry_run", action="store_true")
@@ -315,12 +333,19 @@ def main() -> None:
         },
         output_root / "input_ablation.json",
     )
-    plot_aggregate(aggregate_rows, figure_dir / "rain_input_ablation.png")
-    plot_event_deltas(difference_rows, baseline_name, figure_dir / "rain_per_event_deltas.png")
-    write_report(aggregate_rows, difference_rows, output_root / "RAIN_INPUT_ABLATION.md", args.experiment_kind)
+    plot_aggregate(aggregate_rows, figure_dir / args.aggregate_figure)
+    plot_event_deltas(difference_rows, baseline_name, figure_dir / args.event_figure)
+    write_report(
+        aggregate_rows,
+        difference_rows,
+        output_root / args.report_file,
+        args.experiment_kind,
+        args.report_title,
+        baseline_name,
+    )
     best = max(aggregate_rows, key=lambda row: (row["csi"], -row["mae"]))
     print(f"\nBest by CSI: {best['variant']} CSI={best['csi']:.4f} MAE={best['mae']:.4f}")
-    print(f"Report: {output_root / 'RAIN_INPUT_ABLATION.md'}")
+    print(f"Report: {output_root / args.report_file}")
 
 
 if __name__ == "__main__":

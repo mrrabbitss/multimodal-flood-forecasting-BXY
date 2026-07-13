@@ -3,6 +3,24 @@
 All notable engineering changes are recorded here. Historical benchmark
 results are not rewritten unless they are reproduced by the current code.
 
+## Unreleased - Batch 3 Experiment System
+
+### Added
+
+- Event-level split manifests with disjointness evidence and event names.
+- Paired multi-seed mean/std/min/max summaries and per-seed tables.
+- Paired event bootstrap 95% confidence intervals and win/tie/loss counts.
+- Lead-time runner for `1/3/6/12/24` steps with a common evaluation threshold.
+- Raw, fused, metadata, and leave-one-modality-out channel configurations.
+- Canonical last-frame persistence and linear-extrapolation baselines with
+  per-event metrics.
+
+### Verified
+
+- Three-seed controlled rainfall comparison at fixed split seed `44`.
+- Five-lead single-seed diagnostic and six-variant modality smoke test.
+- Historical Conv-LSTM files and checkpoints were not overwritten.
+
 ## Unreleased - Batch 2 Rainfall And Schema
 
 ### Added

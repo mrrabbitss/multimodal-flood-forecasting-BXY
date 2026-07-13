@@ -20,6 +20,7 @@ from .dataset import (
     inspect_dataset_schema,
     resolve_channel_names,
 )
+from .experiments.splits import save_event_split_manifest
 from .metrics import all_metrics
 from .model import ConvLSTMForecastNet
 from .training.losses import (
@@ -241,6 +242,9 @@ def main() -> None:
         seed=split_seed,
         shuffle=args.shuffle_split,
     )
+    split_manifest, split_manifest_path = save_event_split_manifest(
+        args.fused_dir, args.output_dir, seed=split_seed, shuffle=args.shuffle_split
+    )
     train_ds = FloodSequenceDataset(
         args.fused_dir, train_idx, args.input_len, args.lead_time, channel_names=channel_names
     )
@@ -349,6 +353,7 @@ def main() -> None:
                 "best_score": best_score,
                 "split_seed": split_seed,
                 "shuffle_split": args.shuffle_split,
+                "split_manifest": split_manifest,
                 "best_epoch": epoch,
                 "args": vars(args),
                 "val_metrics": val_metrics,
@@ -474,6 +479,7 @@ def main() -> None:
     test_metrics["best_epoch"] = int(checkpoint.get("best_epoch", best_epoch))
     test_metrics["split_seed"] = int(split_seed)
     test_metrics["shuffle_split"] = bool(args.shuffle_split)
+    test_metrics["split_manifest_file"] = str(split_manifest_path)
     test_metrics["threshold"] = float(test_threshold)
     test_metrics["risk_threshold"] = make_risk_threshold(test_threshold, depth_scale).to_dict()
     test_metrics["depth_scale"] = depth_scale.to_dict()

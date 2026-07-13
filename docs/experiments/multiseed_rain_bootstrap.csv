@@ -1,0 +1,5 @@
+baseline,bootstrap_seed,candidate,ci_lower,ci_upper,confidence,difference_definition,losses,mean_improvement,metric,n_pairs,n_resamples,ties,wins
+A_legacy13,2026,B_rain_current,0.010578160484631852,0.08928026258945465,0.95,candidate improvement over baseline; positive is better,0,0.04649329764975441,mae,3,10000,0,3
+A_legacy13,2026,B_rain_current,0.00323205975785934,0.0642337968749861,0.95,candidate improvement over baseline; positive is better,0,0.025334932378019426,csi,3,10000,0,3
+A_legacy13,2026,C_rain_accum,0.019066055615742997,0.11123530566692352,0.95,candidate improvement over baseline; positive is better,0,0.06098118424415588,mae,3,10000,0,3
+A_legacy13,2026,C_rain_accum,-0.0008926690927462122,0.06518558796240548,0.95,candidate improvement over baseline; positive is better,1,0.026568488133365913,csi,3,10000,0,2
