@@ -1,0 +1,16 @@
+{
+  "experiment_batch": 4,
+  "num_events": 48,
+  "time_steps": 72,
+  "height": 32,
+  "width": 32,
+  "seed": 404,
+  "lead_times": [
+    1,
+    3,
+    6,
+    12,
+    24
+  ],
+  "fused_dir": "runs\\batch4_multihorizon\\data\\fused"
+}

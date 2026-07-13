@@ -100,7 +100,15 @@ def build_loss(pred: torch.Tensor, target: torch.Tensor, config: LossConfig) -> 
     )
     zero = pred.new_zeros(())
     temporal = zero
+    if config.temporal_weight > 0.0 and pred.shape[1] > 1:
+        temporal = F.smooth_l1_loss(pred[:, 1:] - pred[:, :-1], target[:, 1:] - target[:, :-1])
     edge = zero
+    if config.edge_weight > 0.0:
+        pred_dx = pred[..., :, 1:] - pred[..., :, :-1]
+        target_dx = target[..., :, 1:] - target[..., :, :-1]
+        pred_dy = pred[..., 1:, :] - pred[..., :-1, :]
+        target_dy = target[..., 1:, :] - target[..., :-1, :]
+        edge = F.smooth_l1_loss(pred_dx, target_dx) + F.smooth_l1_loss(pred_dy, target_dy)
     total = (
         depth
         + config.bce_weight * bce

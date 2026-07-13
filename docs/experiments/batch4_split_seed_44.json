@@ -1,0 +1,260 @@
+{
+  "split_unit": "event",
+  "split_seed": 44,
+  "shuffle": true,
+  "num_events": 48,
+  "train_ratio": 0.7,
+  "val_ratio": 0.15,
+  "partitions": {
+    "train": [
+      {
+        "event_index": 40,
+        "event_id": "event_0040",
+        "file_name": "event_0040.npz"
+      },
+      {
+        "event_index": 44,
+        "event_id": "event_0044",
+        "file_name": "event_0044.npz"
+      },
+      {
+        "event_index": 0,
+        "event_id": "event_0000",
+        "file_name": "event_0000.npz"
+      },
+      {
+        "event_index": 8,
+        "event_id": "event_0008",
+        "file_name": "event_0008.npz"
+      },
+      {
+        "event_index": 27,
+        "event_id": "event_0027",
+        "file_name": "event_0027.npz"
+      },
+      {
+        "event_index": 5,
+        "event_id": "event_0005",
+        "file_name": "event_0005.npz"
+      },
+      {
+        "event_index": 2,
+        "event_id": "event_0002",
+        "file_name": "event_0002.npz"
+      },
+      {
+        "event_index": 41,
+        "event_id": "event_0041",
+        "file_name": "event_0041.npz"
+      },
+      {
+        "event_index": 18,
+        "event_id": "event_0018",
+        "file_name": "event_0018.npz"
+      },
+      {
+        "event_index": 36,
+        "event_id": "event_0036",
+        "file_name": "event_0036.npz"
+      },
+      {
+        "event_index": 20,
+        "event_id": "event_0020",
+        "file_name": "event_0020.npz"
+      },
+      {
+        "event_index": 25,
+        "event_id": "event_0025",
+        "file_name": "event_0025.npz"
+      },
+      {
+        "event_index": 31,
+        "event_id": "event_0031",
+        "file_name": "event_0031.npz"
+      },
+      {
+        "event_index": 47,
+        "event_id": "event_0047",
+        "file_name": "event_0047.npz"
+      },
+      {
+        "event_index": 1,
+        "event_id": "event_0001",
+        "file_name": "event_0001.npz"
+      },
+      {
+        "event_index": 42,
+        "event_id": "event_0042",
+        "file_name": "event_0042.npz"
+      },
+      {
+        "event_index": 22,
+        "event_id": "event_0022",
+        "file_name": "event_0022.npz"
+      },
+      {
+        "event_index": 15,
+        "event_id": "event_0015",
+        "file_name": "event_0015.npz"
+      },
+      {
+        "event_index": 35,
+        "event_id": "event_0035",
+        "file_name": "event_0035.npz"
+      },
+      {
+        "event_index": 29,
+        "event_id": "event_0029",
+        "file_name": "event_0029.npz"
+      },
+      {
+        "event_index": 12,
+        "event_id": "event_0012",
+        "file_name": "event_0012.npz"
+      },
+      {
+        "event_index": 26,
+        "event_id": "event_0026",
+        "file_name": "event_0026.npz"
+      },
+      {
+        "event_index": 16,
+        "event_id": "event_0016",
+        "file_name": "event_0016.npz"
+      },
+      {
+        "event_index": 38,
+        "event_id": "event_0038",
+        "file_name": "event_0038.npz"
+      },
+      {
+        "event_index": 45,
+        "event_id": "event_0045",
+        "file_name": "event_0045.npz"
+      },
+      {
+        "event_index": 43,
+        "event_id": "event_0043",
+        "file_name": "event_0043.npz"
+      },
+      {
+        "event_index": 4,
+        "event_id": "event_0004",
+        "file_name": "event_0004.npz"
+      },
+      {
+        "event_index": 9,
+        "event_id": "event_0009",
+        "file_name": "event_0009.npz"
+      },
+      {
+        "event_index": 46,
+        "event_id": "event_0046",
+        "file_name": "event_0046.npz"
+      },
+      {
+        "event_index": 13,
+        "event_id": "event_0013",
+        "file_name": "event_0013.npz"
+      },
+      {
+        "event_index": 32,
+        "event_id": "event_0032",
+        "file_name": "event_0032.npz"
+      },
+      {
+        "event_index": 39,
+        "event_id": "event_0039",
+        "file_name": "event_0039.npz"
+      },
+      {
+        "event_index": 17,
+        "event_id": "event_0017",
+        "file_name": "event_0017.npz"
+      }
+    ],
+    "val": [
+      {
+        "event_index": 3,
+        "event_id": "event_0003",
+        "file_name": "event_0003.npz"
+      },
+      {
+        "event_index": 23,
+        "event_id": "event_0023",
+        "file_name": "event_0023.npz"
+      },
+      {
+        "event_index": 10,
+        "event_id": "event_0010",
+        "file_name": "event_0010.npz"
+      },
+      {
+        "event_index": 28,
+        "event_id": "event_0028",
+        "file_name": "event_0028.npz"
+      },
+      {
+        "event_index": 11,
+        "event_id": "event_0011",
+        "file_name": "event_0011.npz"
+      },
+      {
+        "event_index": 24,
+        "event_id": "event_0024",
+        "file_name": "event_0024.npz"
+      },
+      {
+        "event_index": 30,
+        "event_id": "event_0030",
+        "file_name": "event_0030.npz"
+      }
+    ],
+    "test": [
+      {
+        "event_index": 21,
+        "event_id": "event_0021",
+        "file_name": "event_0021.npz"
+      },
+      {
+        "event_index": 34,
+        "event_id": "event_0034",
+        "file_name": "event_0034.npz"
+      },
+      {
+        "event_index": 19,
+        "event_id": "event_0019",
+        "file_name": "event_0019.npz"
+      },
+      {
+        "event_index": 37,
+        "event_id": "event_0037",
+        "file_name": "event_0037.npz"
+      },
+      {
+        "event_index": 33,
+        "event_id": "event_0033",
+        "file_name": "event_0033.npz"
+      },
+      {
+        "event_index": 14,
+        "event_id": "event_0014",
+        "file_name": "event_0014.npz"
+      },
+      {
+        "event_index": 6,
+        "event_id": "event_0006",
+        "file_name": "event_0006.npz"
+      },
+      {
+        "event_index": 7,
+        "event_id": "event_0007",
+        "file_name": "event_0007.npz"
+      }
+    ]
+  },
+  "leakage_check": {
+    "event_disjoint": true,
+    "window_overlap_across_partitions": false
+  }
+}

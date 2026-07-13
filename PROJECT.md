@@ -132,3 +132,22 @@ reaches `MAE=0.0824 +/- 0.0042` and `CSI=0.6885 +/- 0.0345`, compared with
 `MAE=0.1434 +/- 0.0132` and `CSI=0.6515 +/- 0.0013` for the legacy inputs. The
 paired MAE improvement has a positive 95% bootstrap interval; the CSI interval
 crosses zero and is reported as inconclusive. See `BATCH3_EXPERIMENTS.md`.
+
+## Batch 4 Multi-Horizon Benchmark
+
+Batch 4 adds a separate 48-event, 72-step benchmark with joint prediction at
+leads `1/3/6/12/24`, five training seeds, and three strong baselines. The
+event-disjoint split contains 33 training, 7 validation, and 8 test events,
+providing 296 test windows at every horizon.
+
+| Model | MAE | RMSE | CSI | Latency ms/sample | Peak CUDA MB |
+|---|---:|---:|---:|---:|---:|
+| U-Net Single Frame | 0.0828 | 0.1139 | 0.8672 | 0.1757 | 14.89 |
+| 3D CNN | **0.0817** | **0.1115** | **0.8779** | 0.2516 | 34.97 |
+| ConvGRU | 0.0836 | 0.1119 | 0.8693 | 0.8617 | 17.26 |
+| Multi-Horizon Conv-LSTM U-Net | 0.0891 | 0.1224 | 0.8583 | 1.4073 | 15.96 |
+
+The 3D CNN is the accuracy winner under the controlled three-epoch protocol.
+The new Conv-LSTM U-Net did not establish an advantage; this result is kept
+without cherry-picking. Full per-seed, per-horizon, paired-bootstrap, and
+reproduction details are in `BATCH4_EXPERIMENTS.md`.

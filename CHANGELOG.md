@@ -3,6 +3,38 @@
 All notable engineering changes are recorded here. Historical benchmark
 results are not rewritten unless they are reproduced by the current code.
 
+## Unreleased - Batch 4 Multi-Horizon Benchmark
+
+### Added
+
+- Reproducible 48-event, 72-step synthetic data preparation with realtime
+  causality validation at maximum lead 24.
+- Joint `1/3/6/12/24` target construction without changing the historical
+  single-horizon dataset behavior.
+- Strong single-frame U-Net, 3D CNN, and ConvGRU baselines.
+- Multi-scale, multi-horizon Conv-LSTM U-Net candidate.
+- Shared training/evaluation entry points with per-horizon, per-event,
+  latency, peak CUDA memory, and parameter-count reporting.
+- Five-seed aggregation, paired event bootstrap intervals, and three curated
+  comparison figures.
+- Optional temporal-consistency and spatial-edge loss terms. Their defaults
+  remain zero in historical training paths.
+
+### Verified
+
+- Four models across seeds `42/44/52/77/2026` under one three-epoch protocol.
+- Event-disjoint `33/7/8` split with 296 test windows at every forecast lead.
+- 37 unit tests, including multi-horizon alignment, model output shape/range,
+  and temporal/edge loss behavior.
+- Historical Conv-LSTM checkpoint SHA-256 remained unchanged and its 60-event
+  metrics reproduced exactly through the compatibility path.
+
+### Result
+
+- 3D CNN is the Batch 4 accuracy winner (`MAE=0.0817`, `CSI=0.8779`).
+- The first Conv-LSTM U-Net configuration did not beat the three strong
+  baselines and is retained as an honest negative result.
+
 ## Unreleased - Batch 3 Experiment System
 
 ### Added

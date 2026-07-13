@@ -5,14 +5,18 @@ asynchronous multimodal observations. The project simulates meteorology,
 remote sensing, GIS risk, and crowdsourced reports, then aligns, fuses, models,
 evaluates, and visualizes future water-depth risk maps.
 
-The current best model is a preserved **Conv-LSTM** checkpoint. Two additional
-architecture attempts are included for comparison:
+The historical single-horizon benchmark is led by a preserved **Conv-LSTM**
+checkpoint. Two additional architecture attempts are included for comparison:
 
 - **Conv-LSTM + Attention**
 - **CNN-Temporal Transformer**
 
-The main takeaway is limited to this synthetic benchmark: on the current
+The main takeaway is limited to this synthetic benchmark: on the historical
 60-event split, the original Conv-LSTM is the strongest of the tested models.
+The separate Batch 4 multi-horizon benchmark adds three strong baselines and a
+Conv-LSTM U-Net; under its controlled three-epoch budget, **3D CNN wins**. The
+two benchmarks use different schemas and protocols and are not directly
+comparable.
 
 ## Result Snapshot
 
@@ -188,6 +192,32 @@ long horizons; lead `24` contains only three test samples and is explicitly a
 stress test. Full settings, modality smoke results, and reproducibility notes
 are in [BATCH3_EXPERIMENTS.md](BATCH3_EXPERIMENTS.md).
 
+## Batch 4 Multi-Horizon Benchmark
+
+Batch 4 uses 48 longer 72-step events, an event-disjoint `33/7/8` split, five
+training seeds, the full 23-channel schema, and 296 test windows at every lead
+`1/3/6/12/24`. It compares a single-frame U-Net, 3D CNN, ConvGRU, and a new
+multi-horizon Conv-LSTM U-Net under the same data, split, seed set, three-epoch
+budget, hidden width, threshold, and loss settings.
+
+| Model | Parameters | MAE mean +/- std | RMSE mean +/- std | CSI mean +/- std | Latency ms/sample |
+|---|---:|---:|---:|---:|---:|
+| U-Net Single Frame | 27,605 | 0.0828 +/- 0.0020 | 0.1139 +/- 0.0048 | 0.8672 +/- 0.0099 | **0.1757** |
+| **3D CNN** | 15,437 | **0.0817 +/- 0.0042** | **0.1115 +/- 0.0030** | **0.8779 +/- 0.0156** | 0.2516 |
+| ConvGRU | **14,393** | 0.0836 +/- 0.0087 | 0.1119 +/- 0.0078 | 0.8693 +/- 0.0104 | 0.8617 |
+| Multi-Horizon Conv-LSTM U-Net | 61,325 | 0.0891 +/- 0.0070 | 0.1224 +/- 0.0078 | 0.8583 +/- 0.0118 | 1.4073 |
+
+![Batch 4 five-seed model comparison](docs/figures/batch4_model_summary.png)
+
+![Batch 4 multi-horizon curves](docs/figures/batch4_horizon_curves.png)
+
+The new Conv-LSTM U-Net does **not** beat the strong baselines in this first
+controlled run. The 3D CNN is the Batch 4 accuracy winner, the U-Net is
+fastest, and ConvGRU has the fewest parameters. This negative result is kept
+because it is more useful than selecting only favorable runs. Protocol,
+paired bootstrap intervals, efficiency results, reproduction commands, and
+limitations are in [BATCH4_EXPERIMENTS.md](BATCH4_EXPERIMENTS.md).
+
 ## Data Design
 
 Each synthetic event starts from a hidden ground-truth water-depth field
@@ -236,6 +266,7 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |-- CHANGELOG.md                       # Auditable engineering changes
 |-- MODEL_COMPARISON_REPORT.md         # Generated model comparison report
 |-- ARCHITECTURE_EXPERIMENTS.md        # Architecture experiment note
+|-- BATCH4_EXPERIMENTS.md              # Five-seed multi-horizon benchmark
 |-- docs/figures/                      # GitHub-ready showcase figures
 |-- src/
 |   |-- generate_synthetic.py          # Synthetic event generation
@@ -258,6 +289,11 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |   |-- run_input_ablation.py          # A/B/C rainfall input comparison
 |   |-- run_multiseed.py               # Paired multi-seed aggregation and bootstrap CI
 |   |-- run_lead_time.py               # 1/3/6/12/24-step evaluation runner
+|   |-- batch4_dataset.py              # Joint multi-horizon target dataset
+|   |-- batch4_models.py               # U-Net, 3D CNN, ConvGRU, Conv-LSTM U-Net
+|   |-- train_batch4.py                # Shared Batch 4 training protocol
+|   |-- evaluate_batch4.py             # Horizon/event metrics and efficiency
+|   |-- run_batch4.py                  # Five-seed orchestration and bootstrap
 |   |-- experiments/                   # Event splits and statistical summaries
 |   `-- make_model_showcase.py         # Publication-ready figures and report
 |-- tests/                             # Correctness and compatibility tests
@@ -379,6 +415,19 @@ Rebuild only the model-comparison figures and markdown report:
 
 ```bash
 python -m src.make_model_showcase
+```
+
+Run Batch 4 after preparing its longer event set:
+
+```bash
+python -m src.prepare_batch4_data --output_root runs/batch4_multihorizon/data
+python -m src.run_batch4 \
+  --fused_dir runs/batch4_multihorizon/data/fused \
+  --output_root runs/batch4_multihorizon/experiments \
+  --models unet_single_frame,cnn3d,convgru,convlstm_unet \
+  --seeds 42,44,52,77,2026 --split_seed 44 \
+  --input_channels full --input_len 12 --lead_times 1,3,6,12,24 \
+  --epochs 3 --batch_size 8 --hidden 12 --threshold 0.28 --device auto
 ```
 
 ## GitHub Packaging

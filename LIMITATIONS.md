@@ -19,10 +19,18 @@
   intervals.
 - Threshold selection, hyperparameter tuning, and early stopping must use
   validation data. The test set must remain fixed for final reporting.
-- The project does not yet include multi-seed corrected-schema experiments,
-  public-data external validation, calibrated uncertainty, or a physical
-  hydraulic model.
+- The project now includes multi-seed corrected-schema experiments, but it
+  still lacks public-data external validation, calibrated uncertainty, and a
+  physical hydraulic model.
 - The Batch 2 rainfall comparison is a controlled 20-event, single-seed,
   three-epoch diagnostic with three held-out events. Its improvement must be
   confirmed by the later multi-seed experiment batch before becoming a main
   benchmark claim.
+- Batch 4 uses 48 synthetic events and only eight held-out events. Its paired
+  bootstrap intervals quantify variation across those events, not across
+  cities, sensors, or real storms.
+- Batch 4 fixes the data, split, seed set, epochs, hidden width, threshold, and
+  loss settings, but does not match parameter counts across architectures.
+- The Batch 4 three-epoch budget may favor faster-converging models. The 3D CNN
+  win and Conv-LSTM U-Net loss apply only to this controlled configuration.
+- Forecast leads are simulation steps and have no validated mapping to hours.

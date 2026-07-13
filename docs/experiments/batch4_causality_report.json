@@ -1,0 +1,8 @@
+{
+  "mode": "realtime",
+  "valid": true,
+  "checked_event_count": 48,
+  "input_len": 12,
+  "lead_time": 24,
+  "violations": []
+}
