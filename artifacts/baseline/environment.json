@@ -1,0 +1,36 @@
+{
+  "schema_version": "baseline_audit_v1",
+  "captured_at_utc": "2026-07-13T04:08:27.817905+00:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "operating_system": "Windows",
+  "machine": "AMD64",
+  "processor": "AMD64 Family 26 Model 96 Stepping 0, AuthenticAMD",
+  "cpu_logical_count": 16,
+  "physical_memory_bytes": null,
+  "python": {
+    "version": "3.12.12",
+    "executable": "C:\\Users\\23173\\Anaconda3\\envs\\floodwatch\\python.exe"
+  },
+  "packages": {
+    "numpy": "2.5.1",
+    "pandas": "3.0.3",
+    "matplotlib": "3.11.0",
+    "scikit-learn": "1.9.0",
+    "torch": "2.11.0+cu128",
+    "tqdm": "4.68.3"
+  },
+  "torch": {
+    "version": "2.11.0+cu128",
+    "cuda_available": true,
+    "cuda_runtime": "12.8",
+    "cudnn_version": 91900,
+    "devices": [
+      {
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 5060 Laptop GPU",
+        "total_memory_bytes": 8546484224,
+        "compute_capability": "12.0"
+      }
+    ]
+  }
+}

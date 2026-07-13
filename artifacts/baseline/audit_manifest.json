@@ -1,0 +1,33 @@
+{
+  "schema_version": "baseline_audit_v1",
+  "captured_at_utc": "2026-07-13T04:08:27.907191+00:00",
+  "artifact_count": 5,
+  "aggregate_sha256": "6720a35e524560825629ef28cc2bb52f64bb876d5e950a3a4bad170d7f319f0b",
+  "artifacts": [
+    {
+      "path": "environment.json",
+      "size_bytes": 982,
+      "sha256": "e4797048af7ae791a470537842599d23e94e6a43768c5cf0afb5d36f9c5516d8"
+    },
+    {
+      "path": "repository_state.json",
+      "size_bytes": 431,
+      "sha256": "f2a0bfce4ca057da59fdbaab4d02be800759247a75dff64034e35bb89e761247"
+    },
+    {
+      "path": "config.json",
+      "size_bytes": 11559,
+      "sha256": "024b8ffd8c3e5bc14467cd8c887ca02bb00b23107205a6c03bd1dd5af94fe298"
+    },
+    {
+      "path": "metrics.json",
+      "size_bytes": 2980,
+      "sha256": "bd92d1de609c66853421643669fbd320edf70f91b4c5d246f07ae1af7e7bc622"
+    },
+    {
+      "path": "file_hashes.json",
+      "size_bytes": 13139,
+      "sha256": "16c40d038c73a28f18a880c90f44ff28d7ad4a3e4134165a65e2c1f06ed5a08e"
+    }
+  ]
+}

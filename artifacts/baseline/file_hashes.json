@@ -1,0 +1,315 @@
+{
+  "schema_version": "baseline_audit_v1",
+  "checkpoint": {
+    "path": "runs/large60_grid_h24_h32_l1/h32_l1_d0_seed44/outputs/checkpoints/best.pt",
+    "size_bytes": 353667,
+    "sha256": "388a5ebd7517a54b2d12dad0a73ede0f6587d9bc8a0c96e91b180507958b598f"
+  },
+  "dataset": {
+    "directory": "runs/large60_h24_l1_seed42/data/fused",
+    "event_file_count": 60,
+    "aggregate_sha256": "d508ff249aee205f8946d01f847fd07a701ca63e468667accb458357678de3fa",
+    "files": [
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0000.npz",
+        "size_bytes": 10217420,
+        "sha256": "67bda7f38346b342497eeb76458a790bbcd5050cd71c40f3c3e50353debf00fd"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0001.npz",
+        "size_bytes": 10069290,
+        "sha256": "3801af73ecd4f9ed0f1978411020bb765fef90e53aa9e8f5fcfa61bf24fd2afc"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0002.npz",
+        "size_bytes": 10179979,
+        "sha256": "31a81ca7f198954814d92fb7de5135d70f6c94965f1bd53d7bdb317326dce510"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0003.npz",
+        "size_bytes": 10265522,
+        "sha256": "9799d3c7495932724bf033a0bd6e115611c093da3529e28fde79f250b0be2dd6"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0004.npz",
+        "size_bytes": 10141511,
+        "sha256": "0081f5d1f0c3e328a0826fd18a6d74c453734511b8b5666506bfcd745d68dccd"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0005.npz",
+        "size_bytes": 10290429,
+        "sha256": "bfe3e8c57249a2cb9a9053a387da89f8af4f24dec1eec9f57bbecfdadbd31e47"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0006.npz",
+        "size_bytes": 10192570,
+        "sha256": "deeeefb4d56fa1e0c94642199896822f027b89664632833eb786e1452ad7784b"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0007.npz",
+        "size_bytes": 10011704,
+        "sha256": "65d53615723119b73292b8c5e742a26cd688bda04f3531ef385dea303fb21038"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0008.npz",
+        "size_bytes": 10288961,
+        "sha256": "5ab4c09509a4dc841972576b9d5fcfe2e3245a582d26add9cdc60c12f63bdedc"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0009.npz",
+        "size_bytes": 10210062,
+        "sha256": "7c672e69c61c82f63a00177c82d6142b3d9a31bc972b4091d08ae00806678195"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0010.npz",
+        "size_bytes": 10197635,
+        "sha256": "2f1c4f72ce8262c35e15e9b34ee52645b35620db9bbae29b29fabad5a9a1a0c9"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0011.npz",
+        "size_bytes": 9744131,
+        "sha256": "7362d1deb903155567764b35715a8b8128fa9330848d02f416f70c9c020cae79"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0012.npz",
+        "size_bytes": 9903169,
+        "sha256": "2293743adef4114c8de1f5faebadb1c06246ccc84b0d924a002a2b5acf205591"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0013.npz",
+        "size_bytes": 10280088,
+        "sha256": "81d2a7d1eb43575359ce6d522546e4af15ec8fd1b3e08ee4d155ad4bf7975d54"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0014.npz",
+        "size_bytes": 10280128,
+        "sha256": "9ae4110bd329e070d4e37acc54cb41514a5463e2663dccc116c19c73831b5fce"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0015.npz",
+        "size_bytes": 10171866,
+        "sha256": "4ceb444ece2482db37813a070fe5917a36ef276a17a8a3706e17aabb8d8017dc"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0016.npz",
+        "size_bytes": 10216813,
+        "sha256": "9ee5171a647d3645beb5c046675cd030bb58eda0ce7c3c1294cd8011f4e6ed83"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0017.npz",
+        "size_bytes": 10229562,
+        "sha256": "df704881013dad04de17026bcbd9df50e78183d30ac919093f1ae4b7319b5f85"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0018.npz",
+        "size_bytes": 10296252,
+        "sha256": "852a68315c1c82f36d68a2eab7f2d185cb856450fc8cfef896304c10fba8c8fa"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0019.npz",
+        "size_bytes": 9940343,
+        "sha256": "1a713da74f30d83e5e56785e9cab4e80d6ee5e6fb0262724250ba9a4cbcb93c0"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0020.npz",
+        "size_bytes": 10127355,
+        "sha256": "94f1614e63d6368554d97da82fd433ef0df0f9eca64fbf9a505d25ba62f8bdb0"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0021.npz",
+        "size_bytes": 10287898,
+        "sha256": "a2e1c79bd7952bbf85c7ccf8cd04f3691a7ba887ee92a5d539c92e8a38e6ddc7"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0022.npz",
+        "size_bytes": 10248433,
+        "sha256": "7e49b5c095932523dc22a332d75af6e10327072a5fa10a09d2382869f648ec74"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0023.npz",
+        "size_bytes": 10213161,
+        "sha256": "987555c3d6f483fc27323aff587335b296250a7ff322e3f9dc89734f5cb9c92b"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0024.npz",
+        "size_bytes": 9720270,
+        "sha256": "5eb00b628f2f9b72939955b2b1ca484c4b18e6213f5729fff247bad4df81f91e"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0025.npz",
+        "size_bytes": 9916387,
+        "sha256": "32ce5be8d508b328b777efc5660947ff11841cc1e9e2e3d27f2bb2fc9986f466"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0026.npz",
+        "size_bytes": 10197697,
+        "sha256": "15b1a71d9e3c5408012bc4d9930cc67dcebc35af082153865413ed17a2ca9128"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0027.npz",
+        "size_bytes": 10277185,
+        "sha256": "291e4d0e99284ad4d8c655aa4cf16c2e236b12be795680603acbaee985424ebb"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0028.npz",
+        "size_bytes": 10264506,
+        "sha256": "0a33487ba1ad96ff36effa3895f4db4db29d39097cee2a8548694b61ab09bc0a"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0029.npz",
+        "size_bytes": 10183456,
+        "sha256": "48b368ee2ffbba4fb816ad0cfe75cb3ca646583a08aea58180612fc4acf1cf34"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0030.npz",
+        "size_bytes": 10301833,
+        "sha256": "c3b6059bb6679a9140d450973e4212a2ad9645ed978106b6ea8f17409180be52"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0031.npz",
+        "size_bytes": 10218167,
+        "sha256": "472b2f4c4599ed3699e8910b13fe15ceabe0e3932a25db2f76e2e54172943b7a"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0032.npz",
+        "size_bytes": 10287843,
+        "sha256": "300e41e7bb92285dc24208d59513c068cf01ac83a25e116daeb20bafcb1224fd"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0033.npz",
+        "size_bytes": 10215912,
+        "sha256": "c0d2e100d10e5ed1d010425ccaaa773b46b10004725ddc6a30a5ae4a295a268c"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0034.npz",
+        "size_bytes": 10161998,
+        "sha256": "09565f7a8a724e3ef0c8507adcd41175804b69693bf3df48992df79cfae1d36b"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0035.npz",
+        "size_bytes": 9916676,
+        "sha256": "aa546415df331afca5fb824071ac833b920a82945c6d951174dfe9dfeded9690"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0036.npz",
+        "size_bytes": 10183417,
+        "sha256": "d684b483d3507c93e1a491fe82b5b285e8bbfdb0cf50886839ed2b0b46ca6cae"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0037.npz",
+        "size_bytes": 10289089,
+        "sha256": "7dd1854b4876e18f87de7543b2091f8bcc26b5f5ee94140edae0bfe9af7e9867"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0038.npz",
+        "size_bytes": 10262930,
+        "sha256": "d9dfb94865375a3bbfab95a01607f838eaaee68606b45db700202147ee7e94f2"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0039.npz",
+        "size_bytes": 10251774,
+        "sha256": "6768b98489611941e94927bfc8ae0a5894eed1890011d83ef32ad38f66637f1a"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0040.npz",
+        "size_bytes": 9931089,
+        "sha256": "daaa8640a03b8603ba397d2820282fe3703966e411b8a1043db83fb183886497"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0041.npz",
+        "size_bytes": 9885568,
+        "sha256": "5ee722d5ad1d1097f673f8f9d5d146fc46c1f70d27e267bbf029ead07ff66d5d"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0042.npz",
+        "size_bytes": 10196931,
+        "sha256": "719d1bfe03cb45ba18f9770d99c87481ce10e36c3057b4552bbda438aadfc4bd"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0043.npz",
+        "size_bytes": 10239324,
+        "sha256": "b54b1c65ed003c2cb7b48a8e304389069853a7b7fbab5e9883e071f7e3c7c0bc"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0044.npz",
+        "size_bytes": 9773063,
+        "sha256": "0f14087716675246a190e3737d4f3f0a0eb8ca8fcb6b0806f5cebe3c21ca41b3"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0045.npz",
+        "size_bytes": 9788376,
+        "sha256": "f0ba3211f52c9863c2caa21db648c9f2e1c0bb0172ae383e16ca3e1d61595c34"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0046.npz",
+        "size_bytes": 9473513,
+        "sha256": "15c2c7431224cb9644b66941f90f983a6e978ad71deb90a7c336a92e36a6b7bc"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0047.npz",
+        "size_bytes": 10218282,
+        "sha256": "7ef2b640e8a9d8d638c1770d6c5770271f297c649de9d54c2936e05f5f2b17b9"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0048.npz",
+        "size_bytes": 10350640,
+        "sha256": "3638f294c054860febd86868c2bd1832b98a2af81ba5523895d4f78ec528dfde"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0049.npz",
+        "size_bytes": 10224067,
+        "sha256": "f7ac0b11762223e88537b40ea4b898ebea474166d1708076b516df27b88114ee"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0050.npz",
+        "size_bytes": 10260426,
+        "sha256": "39f4cdc1e5614a9162b3c6b59fcf30cef301d11021c9fba4c42f71fd64adecff"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0051.npz",
+        "size_bytes": 10282288,
+        "sha256": "27650832e8453cd2e7c618d9ece1a309bcfa406dc92515bbba97f8649fcaa6a0"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0052.npz",
+        "size_bytes": 10216395,
+        "sha256": "2e0f1cdac0942b4787cb7feb6ee60e78163d8826d20ab7d5fcbc402cb17b1c7d"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0053.npz",
+        "size_bytes": 9501166,
+        "sha256": "4c17eb118c48677a867002a67ff744edd784d9ebf7a8b120ccd80699a42e5fee"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0054.npz",
+        "size_bytes": 9634477,
+        "sha256": "14ba0dd0cdc91d418838eeaf2e60c9409816e95be3cb269a5eaae0efbcebaeeb"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0055.npz",
+        "size_bytes": 9382217,
+        "sha256": "2286c85ef30db790e65d43888a026f10393a383117f660344980a6cc6b3441ed"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0056.npz",
+        "size_bytes": 10219490,
+        "sha256": "d50fc858c5e9a55e47e471770fa5ea5a17bad7679fd3b54b200bef1b98235490"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0057.npz",
+        "size_bytes": 10330772,
+        "sha256": "7665af2b1e5d235cc9c9febb4fd3acc31ce6220e35f948a6783ae4bfad505a84"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0058.npz",
+        "size_bytes": 9987418,
+        "sha256": "93a87a16392367bd246c76dbbfc3e1f60a0e67af783574a39bb02cc23c89a966"
+      },
+      {
+        "path": "runs/large60_h24_l1_seed42/data/fused/event_0059.npz",
+        "size_bytes": 10328326,
+        "sha256": "aa6454a65797d693266cdc9b7aca076a898e2e549f08d2737522b814a584477d"
+      }
+    ]
+  }
+}

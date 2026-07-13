@@ -3,6 +3,34 @@
 All notable engineering changes are recorded here. Historical benchmark
 results are not rewritten unless they are reproduced by the current code.
 
+## Unreleased - P0 Baseline Audit Closure
+
+### Added
+
+- One-command baseline capture for environment, repository state, model/data
+  configuration, event split, metrics, and file identities.
+- SHA-256 records for the preserved checkpoint and all 60 fused event files,
+  plus an aggregate dataset identity and audit-artifact digest.
+- Inference latency and peak CUDA memory metadata with explicit batch, warmup,
+  measured-batch, device, and software configuration.
+- A committed lightweight audit bundle and P0 requirement-to-evidence matrix.
+
+### Corrected
+
+- Historical metric inference now runs deterministically.
+- Efficiency warmup runs after metric inference so cuDNN algorithm selection
+  cannot perturb the reproducibility result.
+- The final evaluation input tensor is released before peak-memory measurement.
+
+### Verified
+
+- Two consecutive GPU evaluations produced byte-identical core metrics and
+  confusion-matrix counts.
+- The preserved Conv-LSTM reproduced `MAE=0.0547086373` and
+  `CSI=0.9370353465` from 495 windows across nine held-out events.
+- All root audit JSON files reload, their aggregate digest validates, the split
+  is event-disjoint, and the historical checkpoint hash remains unchanged.
+
 ## Unreleased - Batch 4 Multi-Horizon Benchmark
 
 ### Added

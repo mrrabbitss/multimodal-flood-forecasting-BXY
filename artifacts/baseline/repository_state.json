@@ -1,0 +1,11 @@
+{
+  "schema_version": "baseline_audit_v1",
+  "repository_root": "D:\\GRXM\\yhnr\\multimodal-flood-forecasting-github",
+  "git_available": true,
+  "commit": "045c5cf4e693930c5207c911b14e27c18510d40c",
+  "branch": "feature/p0-baseline-audit",
+  "origin": "https://github.com/mrrabbitss/multimodal-flood-forecasting-BXY.git",
+  "working_tree_clean": true,
+  "status_porcelain": [],
+  "captured_before_artifact_write": true
+}

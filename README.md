@@ -114,6 +114,27 @@ flowchart LR
     F --> H["Latency and GPU memory comparison"]
 ```
 
+## P0 Reproducibility Audit
+
+The original correctness-and-credibility checklist is now closed with a
+machine-readable baseline audit. One command captures the Git state, runtime
+environment, checkpoint configuration, event-disjoint split, metrics,
+latency/memory protocol, checkpoint hash, and SHA-256 for every fused event.
+
+```bash
+python scripts/capture_baseline.py \
+  --fused_dir runs/large60_h24_l1_seed42/data/fused \
+  --checkpoint runs/large60_grid_h24_h32_l1/h32_l1_d0_seed44/outputs/checkpoints/best.pt \
+  --output_dir artifacts/baseline \
+  --batch_size 8 --threshold 0.28 --device auto --overwrite
+```
+
+The committed audit bundle reproduces the preserved Conv-LSTM at
+`MAE=0.0547086373` and `CSI=0.9370353465`. Its checkpoint SHA-256 is
+`388a5ebd...b598f`, and all 60 fused event hashes are captured in the data
+manifest. See [P0_COMPLETION.md](P0_COMPLETION.md) for the requirement matrix,
+artifact definitions, exact identities, and validity boundary.
+
 ## Trustworthiness And Rain Schema Upgrade
 
 The first engineering-hardening batch is implemented with backward
@@ -267,6 +288,8 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |-- MODEL_COMPARISON_REPORT.md         # Generated model comparison report
 |-- ARCHITECTURE_EXPERIMENTS.md        # Architecture experiment note
 |-- BATCH4_EXPERIMENTS.md              # Five-seed multi-horizon benchmark
+|-- P0_COMPLETION.md                   # Correctness and audit evidence map
+|-- artifacts/baseline/                # Lightweight committed audit manifests
 |-- docs/figures/                      # GitHub-ready showcase figures
 |-- src/
 |   |-- generate_synthetic.py          # Synthetic event generation
@@ -296,6 +319,7 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |   |-- run_batch4.py                  # Five-seed orchestration and bootstrap
 |   |-- experiments/                   # Event splits and statistical summaries
 |   `-- make_model_showcase.py         # Publication-ready figures and report
+|-- scripts/capture_baseline.py        # Environment, metric, split, and hash audit
 |-- tests/                             # Correctness and compatibility tests
 |-- data/                              # Generated data, ignored by git
 |-- outputs/                           # Default generated outputs, ignored by git

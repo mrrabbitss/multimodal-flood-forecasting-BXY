@@ -151,3 +151,17 @@ The 3D CNN is the accuracy winner under the controlled three-epoch protocol.
 The new Conv-LSTM U-Net did not establish an advantage; this result is kept
 without cherry-picking. Full per-seed, per-horizon, paired-bootstrap, and
 reproduction details are in `BATCH4_EXPERIMENTS.md`.
+
+## P0 Audit Closure
+
+The original P0 correctness checklist is now fully mapped to source and test
+evidence. `scripts/capture_baseline.py` creates a versioned audit bundle with
+the exact Git state, environment, model/schema/loss configuration, event split,
+metrics, latency protocol, and SHA-256 identities for the checkpoint and all
+fused events.
+
+The committed bundle under `artifacts/baseline/` was captured from clean commit
+`045c5cf`. It records 60 fused events, nine disjoint test events, 495 test
+windows, checkpoint SHA-256 `388a5ebd...b598f`, `MAE=0.0547086373`, and
+`CSI=0.9370353465`. Two consecutive deterministic GPU evaluations reproduced
+the core metrics and confusion matrix exactly. See `P0_COMPLETION.md`.

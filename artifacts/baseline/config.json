@@ -1,0 +1,443 @@
+{
+  "schema_version": "baseline_audit_v1",
+  "captured_at_utc": "2026-07-13T04:08:27.310724+00:00",
+  "fused_dir": "runs/large60_h24_l1_seed42/data/fused",
+  "checkpoint": "runs/large60_grid_h24_h32_l1/h32_l1_d0_seed44/outputs/checkpoints/best.pt",
+  "output_dir": "artifacts/baseline",
+  "evaluation": {
+    "batch_size": 8,
+    "num_workers": 0,
+    "device": "auto",
+    "seed": 42,
+    "threshold": 0.28,
+    "warmup_batches": 2,
+    "benchmark_batches": 20,
+    "command": [
+      "C:\\Users\\23173\\Anaconda3\\envs\\floodwatch\\python.exe",
+      "-m",
+      "src.evaluate",
+      "--fused_dir",
+      "D:\\GRXM\\yhnr\\multimodal-flood-forecasting-github\\runs\\large60_h24_l1_seed42\\data\\fused",
+      "--checkpoint",
+      "D:\\GRXM\\yhnr\\multimodal-flood-forecasting-github\\runs\\large60_grid_h24_h32_l1\\h32_l1_d0_seed44\\outputs\\checkpoints\\best.pt",
+      "--output_dir",
+      "D:\\GRXM\\yhnr\\multimodal-flood-forecasting-github\\artifacts\\baseline\\evaluation",
+      "--batch_size",
+      "8",
+      "--num_workers",
+      "0",
+      "--device",
+      "auto",
+      "--seed",
+      "42",
+      "--threshold",
+      "0.28",
+      "--warmup_batches",
+      "2",
+      "--benchmark_batches",
+      "20"
+    ]
+  },
+  "model": {
+    "architecture": "ConvLSTMForecastNet",
+    "input_len": 12,
+    "lead_time": 6,
+    "input_channels": 13,
+    "channel_names": [
+      "meteo",
+      "satellite",
+      "gis",
+      "social",
+      "fused_depth",
+      "risk_score",
+      "miss_sat",
+      "miss_soc",
+      "dt_sat",
+      "dt_soc",
+      "n_soc",
+      "exposure",
+      "drainage_penalty"
+    ],
+    "hidden_channels": 32,
+    "num_layers": 1,
+    "dropout": 0.0,
+    "use_residual": false,
+    "residual_scale": 0.35,
+    "parameter_count": 86977,
+    "best_epoch": 8,
+    "training_seed": 42,
+    "split_seed": 44,
+    "shuffle_split": true,
+    "depth_scale": {
+      "mode": "normalized",
+      "min_value": 0.0,
+      "max_value": 1.0,
+      "unit": "normalized_depth"
+    },
+    "risk_threshold": {
+      "value": 0.28,
+      "unit": "normalized_depth",
+      "meaning": "binary high-risk threshold for the synthetic normalized benchmark"
+    },
+    "loss_config": {
+      "loss_threshold": 0.2,
+      "high_risk_weight": 2.5,
+      "mse_weight": 0.25,
+      "class_threshold": 0.3,
+      "class_temperature": 0.04,
+      "bce_weight": 0.0,
+      "dice_weight": 0.0,
+      "focal_weight": 0.0,
+      "temporal_weight": 0.0,
+      "edge_weight": 0.0
+    },
+    "data_schema": {
+      "schema_version": 2,
+      "channel_registry_version": "rain_schema_v2",
+      "source_artifact_schema_version": 1,
+      "rain_feature_version": "causal_rolling_v1",
+      "rain_features_materialized": false,
+      "channel_names": [
+        "meteo",
+        "satellite",
+        "gis",
+        "social",
+        "fused_depth",
+        "risk_score",
+        "miss_sat",
+        "miss_soc",
+        "dt_sat",
+        "dt_soc",
+        "n_soc",
+        "exposure",
+        "drainage_penalty"
+      ],
+      "input_channels": 13,
+      "target": "gt_depth",
+      "time_steps": 72,
+      "height": 64,
+      "width": 64,
+      "checkpoint_schema_compatibility": "legacy_inferred"
+    }
+  },
+  "event_split": {
+    "split_unit": "event",
+    "split_seed": 44,
+    "shuffle": true,
+    "num_events": 60,
+    "train_ratio": 0.7,
+    "val_ratio": 0.15,
+    "partitions": {
+      "train": [
+        {
+          "event_index": 31,
+          "event_id": "event_0031",
+          "file_name": "event_0031.npz"
+        },
+        {
+          "event_index": 2,
+          "event_id": "event_0002",
+          "file_name": "event_0002.npz"
+        },
+        {
+          "event_index": 35,
+          "event_id": "event_0035",
+          "file_name": "event_0035.npz"
+        },
+        {
+          "event_index": 54,
+          "event_id": "event_0054",
+          "file_name": "event_0054.npz"
+        },
+        {
+          "event_index": 8,
+          "event_id": "event_0008",
+          "file_name": "event_0008.npz"
+        },
+        {
+          "event_index": 32,
+          "event_id": "event_0032",
+          "file_name": "event_0032.npz"
+        },
+        {
+          "event_index": 38,
+          "event_id": "event_0038",
+          "file_name": "event_0038.npz"
+        },
+        {
+          "event_index": 52,
+          "event_id": "event_0052",
+          "file_name": "event_0052.npz"
+        },
+        {
+          "event_index": 42,
+          "event_id": "event_0042",
+          "file_name": "event_0042.npz"
+        },
+        {
+          "event_index": 1,
+          "event_id": "event_0001",
+          "file_name": "event_0001.npz"
+        },
+        {
+          "event_index": 27,
+          "event_id": "event_0027",
+          "file_name": "event_0027.npz"
+        },
+        {
+          "event_index": 46,
+          "event_id": "event_0046",
+          "file_name": "event_0046.npz"
+        },
+        {
+          "event_index": 0,
+          "event_id": "event_0000",
+          "file_name": "event_0000.npz"
+        },
+        {
+          "event_index": 51,
+          "event_id": "event_0051",
+          "file_name": "event_0051.npz"
+        },
+        {
+          "event_index": 41,
+          "event_id": "event_0041",
+          "file_name": "event_0041.npz"
+        },
+        {
+          "event_index": 5,
+          "event_id": "event_0005",
+          "file_name": "event_0005.npz"
+        },
+        {
+          "event_index": 59,
+          "event_id": "event_0059",
+          "file_name": "event_0059.npz"
+        },
+        {
+          "event_index": 53,
+          "event_id": "event_0053",
+          "file_name": "event_0053.npz"
+        },
+        {
+          "event_index": 18,
+          "event_id": "event_0018",
+          "file_name": "event_0018.npz"
+        },
+        {
+          "event_index": 48,
+          "event_id": "event_0048",
+          "file_name": "event_0048.npz"
+        },
+        {
+          "event_index": 58,
+          "event_id": "event_0058",
+          "file_name": "event_0058.npz"
+        },
+        {
+          "event_index": 56,
+          "event_id": "event_0056",
+          "file_name": "event_0056.npz"
+        },
+        {
+          "event_index": 47,
+          "event_id": "event_0047",
+          "file_name": "event_0047.npz"
+        },
+        {
+          "event_index": 29,
+          "event_id": "event_0029",
+          "file_name": "event_0029.npz"
+        },
+        {
+          "event_index": 16,
+          "event_id": "event_0016",
+          "file_name": "event_0016.npz"
+        },
+        {
+          "event_index": 15,
+          "event_id": "event_0015",
+          "file_name": "event_0015.npz"
+        },
+        {
+          "event_index": 43,
+          "event_id": "event_0043",
+          "file_name": "event_0043.npz"
+        },
+        {
+          "event_index": 22,
+          "event_id": "event_0022",
+          "file_name": "event_0022.npz"
+        },
+        {
+          "event_index": 26,
+          "event_id": "event_0026",
+          "file_name": "event_0026.npz"
+        },
+        {
+          "event_index": 13,
+          "event_id": "event_0013",
+          "file_name": "event_0013.npz"
+        },
+        {
+          "event_index": 20,
+          "event_id": "event_0020",
+          "file_name": "event_0020.npz"
+        },
+        {
+          "event_index": 12,
+          "event_id": "event_0012",
+          "file_name": "event_0012.npz"
+        },
+        {
+          "event_index": 40,
+          "event_id": "event_0040",
+          "file_name": "event_0040.npz"
+        },
+        {
+          "event_index": 44,
+          "event_id": "event_0044",
+          "file_name": "event_0044.npz"
+        },
+        {
+          "event_index": 25,
+          "event_id": "event_0025",
+          "file_name": "event_0025.npz"
+        },
+        {
+          "event_index": 45,
+          "event_id": "event_0045",
+          "file_name": "event_0045.npz"
+        },
+        {
+          "event_index": 4,
+          "event_id": "event_0004",
+          "file_name": "event_0004.npz"
+        },
+        {
+          "event_index": 9,
+          "event_id": "event_0009",
+          "file_name": "event_0009.npz"
+        },
+        {
+          "event_index": 57,
+          "event_id": "event_0057",
+          "file_name": "event_0057.npz"
+        },
+        {
+          "event_index": 17,
+          "event_id": "event_0017",
+          "file_name": "event_0017.npz"
+        },
+        {
+          "event_index": 36,
+          "event_id": "event_0036",
+          "file_name": "event_0036.npz"
+        },
+        {
+          "event_index": 3,
+          "event_id": "event_0003",
+          "file_name": "event_0003.npz"
+        }
+      ],
+      "val": [
+        {
+          "event_index": 23,
+          "event_id": "event_0023",
+          "file_name": "event_0023.npz"
+        },
+        {
+          "event_index": 10,
+          "event_id": "event_0010",
+          "file_name": "event_0010.npz"
+        },
+        {
+          "event_index": 28,
+          "event_id": "event_0028",
+          "file_name": "event_0028.npz"
+        },
+        {
+          "event_index": 11,
+          "event_id": "event_0011",
+          "file_name": "event_0011.npz"
+        },
+        {
+          "event_index": 24,
+          "event_id": "event_0024",
+          "file_name": "event_0024.npz"
+        },
+        {
+          "event_index": 39,
+          "event_id": "event_0039",
+          "file_name": "event_0039.npz"
+        },
+        {
+          "event_index": 30,
+          "event_id": "event_0030",
+          "file_name": "event_0030.npz"
+        },
+        {
+          "event_index": 21,
+          "event_id": "event_0021",
+          "file_name": "event_0021.npz"
+        },
+        {
+          "event_index": 34,
+          "event_id": "event_0034",
+          "file_name": "event_0034.npz"
+        }
+      ],
+      "test": [
+        {
+          "event_index": 19,
+          "event_id": "event_0019",
+          "file_name": "event_0019.npz"
+        },
+        {
+          "event_index": 50,
+          "event_id": "event_0050",
+          "file_name": "event_0050.npz"
+        },
+        {
+          "event_index": 49,
+          "event_id": "event_0049",
+          "file_name": "event_0049.npz"
+        },
+        {
+          "event_index": 37,
+          "event_id": "event_0037",
+          "file_name": "event_0037.npz"
+        },
+        {
+          "event_index": 33,
+          "event_id": "event_0033",
+          "file_name": "event_0033.npz"
+        },
+        {
+          "event_index": 14,
+          "event_id": "event_0014",
+          "file_name": "event_0014.npz"
+        },
+        {
+          "event_index": 6,
+          "event_id": "event_0006",
+          "file_name": "event_0006.npz"
+        },
+        {
+          "event_index": 7,
+          "event_id": "event_0007",
+          "file_name": "event_0007.npz"
+        },
+        {
+          "event_index": 55,
+          "event_id": "event_0055",
+          "file_name": "event_0055.npz"
+        }
+      ]
+    },
+    "leakage_check": {
+      "event_disjoint": true,
+      "window_overlap_across_partitions": false
+    }
+  }
+}
