@@ -18,6 +18,11 @@ Conv-LSTM U-Net; under its controlled three-epoch budget, **3D CNN wins**. The
 two benchmarks use different schemas and protocols and are not directly
 comparable.
 
+For a detailed Chinese account of the complete development history, workload,
+successful and unsuccessful experiments, quantitative results, and engineering
+capabilities, see
+[PROJECT_FULL_EVOLUTION_REPORT.md](PROJECT_FULL_EVOLUTION_REPORT.md).
+
 ## Result Snapshot
 
 All model rows are historical legacy-schema results using the same synthetic
@@ -282,6 +287,7 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |-- requirements-dev.txt               # Test dependencies
 |-- README.md                          # GitHub project homepage
 |-- PROJECT.md                         # Concise project report
+|-- PROJECT_FULL_EVOLUTION_REPORT.md  # Complete Chinese evolution and results report
 |-- DATA_CARD.md                       # Synthetic data and field definitions
 |-- LIMITATIONS.md                     # Valid-use boundaries
 |-- CHANGELOG.md                       # Auditable engineering changes
