@@ -1,6 +1,26 @@
-# Synthetic Data Card
+# Data Card
 
-## Scope
+## External Physical Simulation Data
+
+The isolated external benchmark supports two public physical simulation
+datasets without changing the historical synthetic pipeline:
+
+| Dataset | Local benchmark scope | Physical protocol |
+|---|---|---|
+| LarNO UKEA | 20 events; official 8-train/12-test event partition | Native 8 m depth; 1-minute rain aggregated to 5 minutes |
+| UrbanFlood24 | Three locations; 40 train and 16 test events per location | 500 x 500 fields reduced by 4 x 4 block averaging; 1-minute rain aligned to 5 minutes |
+
+Both adapters emit physical depth targets in metres at `5/15/30/60 min` and
+use event-disjoint splits. UrbanFlood24 design-rain events provide 180 rain
+steps while flood simulation continues; missing later rain is explicitly
+zero-padded. LarNO UKEA does not provide imperviousness or drainage-inlet maps,
+so those channels are documented zeros.
+
+These are hydraulic or flood-simulation datasets, not direct observations from
+operational city sensors. The committed repository contains only lightweight
+metrics and manifests; downloaded arrays remain outside Git.
+
+## Synthetic Data Scope
 
 This repository generates synthetic multimodal urban-flood events for
 engineering validation. It is not a measured city dataset and must not be used

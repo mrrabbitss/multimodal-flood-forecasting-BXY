@@ -1,0 +1,130 @@
+{
+  "schema_version": "external_spatial_showcase_v1",
+  "dataset": "urbanflood24",
+  "location": "location2",
+  "seed": 42,
+  "sample_index": 107,
+  "selection_score": 0.1442549242079258,
+  "event_id": "r300y_p0.8_d3h",
+  "start": 12,
+  "patch_y": 64,
+  "patch_x": 64,
+  "lead_minutes": [
+    5,
+    15,
+    30,
+    60
+  ],
+  "threshold_m": 0.1,
+  "metrics": {
+    "persistence": [
+      {
+        "lead_minutes": 5,
+        "mae_cm": 0.4359356164932251,
+        "rmse_cm": 1.9684845209121704,
+        "csi": 0.8138528138528138
+      },
+      {
+        "lead_minutes": 15,
+        "mae_cm": 1.638216495513916,
+        "rmse_cm": 6.672054290771484,
+        "csi": 0.5611940298507463
+      },
+      {
+        "lead_minutes": 30,
+        "mae_cm": 5.489696025848389,
+        "rmse_cm": 18.2576904296875,
+        "csi": 0.32469775474956825
+      },
+      {
+        "lead_minutes": 60,
+        "mae_cm": 8.343304634094238,
+        "rmse_cm": 24.792802810668945,
+        "csi": 0.2688953488372093
+      }
+    ],
+    "convlstm": [
+      {
+        "lead_minutes": 5,
+        "mae_cm": 0.4791857600212097,
+        "rmse_cm": 1.9457671642303467,
+        "csi": 0.8138528138528138
+      },
+      {
+        "lead_minutes": 15,
+        "mae_cm": 1.8040677309036255,
+        "rmse_cm": 6.573287487030029,
+        "csi": 0.5761194029850746
+      },
+      {
+        "lead_minutes": 30,
+        "mae_cm": 5.524148464202881,
+        "rmse_cm": 18.185964584350586,
+        "csi": 0.3298791018998273
+      },
+      {
+        "lead_minutes": 60,
+        "mae_cm": 8.369610786437988,
+        "rmse_cm": 24.879348754882812,
+        "csi": 0.26822157434402333
+      }
+    ],
+    "convlstm_attention": [
+      {
+        "lead_minutes": 5,
+        "mae_cm": 0.4366440176963806,
+        "rmse_cm": 1.968828558921814,
+        "csi": 0.8138528138528138
+      },
+      {
+        "lead_minutes": 15,
+        "mae_cm": 1.6391382217407227,
+        "rmse_cm": 6.672482013702393,
+        "csi": 0.5611940298507463
+      },
+      {
+        "lead_minutes": 30,
+        "mae_cm": 5.492747783660889,
+        "rmse_cm": 18.26022720336914,
+        "csi": 0.32469775474956825
+      },
+      {
+        "lead_minutes": 60,
+        "mae_cm": 8.342469215393066,
+        "rmse_cm": 24.796781539916992,
+        "csi": 0.2688953488372093
+      }
+    ],
+    "cnn_temporal_transformer": [
+      {
+        "lead_minutes": 5,
+        "mae_cm": 0.5551992654800415,
+        "rmse_cm": 1.907055139541626,
+        "csi": 0.8225108225108225
+      },
+      {
+        "lead_minutes": 15,
+        "mae_cm": 1.7886512279510498,
+        "rmse_cm": 6.571507453918457,
+        "csi": 0.5761194029850746
+      },
+      {
+        "lead_minutes": 30,
+        "mae_cm": 5.5652594566345215,
+        "rmse_cm": 18.27365493774414,
+        "csi": 0.32642487046632124
+      },
+      {
+        "lead_minutes": 60,
+        "mae_cm": 8.486998558044434,
+        "rmse_cm": 25.04056167602539,
+        "csi": 0.26423357664233577
+      }
+    ]
+  },
+  "checkpoints": {
+    "convlstm": "runs/external_physical/benchmark_v1/urbanflood24/location2/convlstm/seed_42/checkpoints/best.pt",
+    "convlstm_attention": "runs/external_physical/benchmark_v1/urbanflood24/location2/convlstm_attention/seed_42/checkpoints/best.pt",
+    "cnn_temporal_transformer": "runs/external_physical/benchmark_v1/urbanflood24/location2/cnn_temporal_transformer/seed_42/checkpoints/best.pt"
+  }
+}

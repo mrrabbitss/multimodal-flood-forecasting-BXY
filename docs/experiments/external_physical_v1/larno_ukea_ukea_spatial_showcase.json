@@ -1,0 +1,130 @@
+{
+  "schema_version": "external_spatial_showcase_v1",
+  "dataset": "larno_ukea",
+  "location": "ukea",
+  "seed": 42,
+  "sample_index": 220,
+  "selection_score": 0.5455953055620194,
+  "event_id": "r500y_p0.1_d3h_1",
+  "start": 6,
+  "patch_y": 0,
+  "patch_x": 0,
+  "lead_minutes": [
+    5,
+    15,
+    30,
+    60
+  ],
+  "threshold_m": 0.1,
+  "metrics": {
+    "persistence": [
+      {
+        "lead_minutes": 5,
+        "mae_cm": 4.55283784866333,
+        "rmse_cm": 7.930609703063965,
+        "csi": 0.7574257425742574
+      },
+      {
+        "lead_minutes": 15,
+        "mae_cm": 14.913305282592773,
+        "rmse_cm": 26.41823959350586,
+        "csi": 0.5880092236740968
+      },
+      {
+        "lead_minutes": 30,
+        "mae_cm": 27.7401065826416,
+        "rmse_cm": 44.50675582885742,
+        "csi": 0.47040690505548705
+      },
+      {
+        "lead_minutes": 60,
+        "mae_cm": 46.2443733215332,
+        "rmse_cm": 66.94026184082031,
+        "csi": 0.38959714431412545
+      }
+    ],
+    "convlstm": [
+      {
+        "lead_minutes": 5,
+        "mae_cm": 3.515713691711426,
+        "rmse_cm": 5.950952529907227,
+        "csi": 0.8168316831683168
+      },
+      {
+        "lead_minutes": 15,
+        "mae_cm": 11.63468074798584,
+        "rmse_cm": 20.6160945892334,
+        "csi": 0.7453183520599251
+      },
+      {
+        "lead_minutes": 30,
+        "mae_cm": 19.702680587768555,
+        "rmse_cm": 31.96263313293457,
+        "csi": 0.8491879350348028
+      },
+      {
+        "lead_minutes": 60,
+        "mae_cm": 27.83063316345215,
+        "rmse_cm": 40.86563491821289,
+        "csi": 0.8911465892597968
+      }
+    ],
+    "convlstm_attention": [
+      {
+        "lead_minutes": 5,
+        "mae_cm": 3.899810791015625,
+        "rmse_cm": 6.768959999084473,
+        "csi": 0.7980198019801981
+      },
+      {
+        "lead_minutes": 15,
+        "mae_cm": 12.401104927062988,
+        "rmse_cm": 22.050901412963867,
+        "csi": 0.6997742663656885
+      },
+      {
+        "lead_minutes": 30,
+        "mae_cm": 21.8565673828125,
+        "rmse_cm": 35.23288345336914,
+        "csi": 0.7155688622754491
+      },
+      {
+        "lead_minutes": 60,
+        "mae_cm": 32.52033996582031,
+        "rmse_cm": 46.74418640136719,
+        "csi": 0.7963330029732408
+      }
+    ],
+    "cnn_temporal_transformer": [
+      {
+        "lead_minutes": 5,
+        "mae_cm": 3.582523822784424,
+        "rmse_cm": 6.070777416229248,
+        "csi": 0.8148514851485148
+      },
+      {
+        "lead_minutes": 15,
+        "mae_cm": 12.085533142089844,
+        "rmse_cm": 21.353410720825195,
+        "csi": 0.6977443609022557
+      },
+      {
+        "lead_minutes": 30,
+        "mae_cm": 22.03934097290039,
+        "rmse_cm": 34.912776947021484,
+        "csi": 0.6628878281622912
+      },
+      {
+        "lead_minutes": 60,
+        "mae_cm": 34.907718658447266,
+        "rmse_cm": 49.478485107421875,
+        "csi": 0.6465686274509804
+      }
+    ]
+  },
+  "checkpoints": {
+    "convlstm": "runs/external_physical/benchmark_v1/larno_ukea/ukea/convlstm/seed_42/checkpoints/best.pt",
+    "convlstm_attention": "runs/external_physical/benchmark_v1/larno_ukea/ukea/convlstm_attention/seed_42/checkpoints/best.pt",
+    "cnn_temporal_transformer": "runs/external_physical/benchmark_v1/larno_ukea/ukea/cnn_temporal_transformer/seed_42/checkpoints/best.pt"
+  }
+}

@@ -91,6 +91,31 @@ changes use a separate 19-channel schema and do not relabel these results.
 CSI is numerically identical to IoU under the current binary flood-mask
 definition.
 
+## External Physical-Data Benchmark
+
+An isolated benchmark now evaluates copied model variants on LarNO UKEA and
+all three UrbanFlood24 locations at a common `8 m / 5 min` resolution. It uses
+60 minutes of history to predict physical water-depth maps at `5/15/30/60 min`
+and evaluates flood extent at `0.10 m`.
+
+The benchmark contains 42 training runs. UKEA uses five seeds and all available
+`234/52/312` train/validation/test windows per run. UrbanFlood24 uses three
+seeds per location, covers all events, and samples eight windows per event.
+
+| Dataset | Model | MAE cm | RMSE cm | CSI | MAE reduction vs persistence |
+|---|---|---:|---:|---:|---:|
+| UKEA | Conv-LSTM | **1.715** | **6.720** | **0.7713** | **23.9%** |
+| UKEA | Conv-LSTM + Attention | 1.911 | 7.229 | 0.7583 | 15.1% |
+| UKEA | CNN-Temporal Transformer | 1.795 | 6.839 | 0.7692 | 20.3% |
+| UrbanFlood24 | Conv-LSTM | **0.611** | 2.967 | 0.8272 | **10.4%** |
+| UrbanFlood24 | Conv-LSTM + Attention | 0.615 | 3.033 | 0.8236 | 9.8% |
+| UrbanFlood24 | CNN-Temporal Transformer | 0.634 | **2.862** | **0.8329** | 7.3% |
+
+Conv-LSTM is the strongest current regression and efficiency choice. The
+Transformer obtains the highest UrbanFlood24 CSI but uses substantially more
+activation memory. Full protocol, per-location tables, figures, limitations,
+and commands are in `EXTERNAL_PHYSICAL_DATA_EXPERIMENTS.md`.
+
 ## Batch 2 Rainfall Schema
 
 The current default input schema has 23 named channels and adds causal current

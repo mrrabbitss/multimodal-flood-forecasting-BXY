@@ -3,6 +3,44 @@
 All notable engineering changes are recorded here. Historical benchmark
 results are not rewritten unless they are reproduced by the current code.
 
+## Unreleased - External Physical-Data Benchmark
+
+### Added
+
+- Memory-mapped UrbanFlood24 and LarNO UKEA adapters with a common 8 m / 5 min
+  physical protocol and no full-dataset duplication.
+- Separate multi-horizon Conv-LSTM, Conv-LSTM + Attention, and CNN-Temporal
+  Transformer copies; historical model files and checkpoints remain unchanged.
+- State-aware residual forecasts initialized exactly to persistence, with an
+  epoch-0 checkpoint guard against undertrained regressions.
+- Physical MAE/RMSE, wet-pixel error, peak-depth error, CSI/POD/FAR at four
+  thresholds, latency, peak CUDA memory, and parameter-count reporting.
+- Resumable multi-seed orchestration, protocol-drift validation, six comparison
+  plot types per dataset/location, cross-dataset plots, and spatial error maps.
+- Public lightweight CSV/JSON evidence under
+  `docs/experiments/external_physical_v1/` and a detailed experiment report.
+
+### Verified
+
+- 42 training runs: 15 UKEA runs (`3 models x 5 seeds`) and 27 UrbanFlood24
+  runs (`3 locations x 3 models x 3 seeds`).
+- UKEA uses all `234/52/312` train/validation/test windows per run; UrbanFlood24
+  uses `256/64/128` sampled windows while covering every event.
+- Eleven focused external-data tests pass, including temporal aggregation,
+  design-rain zero padding, masks, model reconstruction, exact persistence
+  initialization, protocol consistency, and aggregation.
+
+### Result
+
+- On UKEA, Conv-LSTM reduces mean MAE by `23.9%` and raises CSI by `8.3`
+  percentage points versus persistence; at 60 minutes the gains are `26.9%`
+  and `15.9` points.
+- Across UrbanFlood24 locations, Conv-LSTM has the lowest MAE while the
+  CNN-Temporal Transformer has the highest CSI, exposing an accuracy-resource
+  tradeoff rather than a universal winner.
+- Conv-LSTM + Attention beats persistence on aggregate but does not establish
+  an advantage over the simpler Conv-LSTM under the current protocol.
+
 ## Unreleased - P0 Baseline Audit Closure
 
 ### Added

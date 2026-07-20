@@ -1,9 +1,10 @@
 # Multimodal Flood Risk Forecasting with Conv-LSTM
 
-An end-to-end deep learning demo for urban flood-risk forecasting from
-asynchronous multimodal observations. The project simulates meteorology,
-remote sensing, GIS risk, and crowdsourced reports, then aligns, fuses, models,
-evaluates, and visualizes future water-depth risk maps.
+An end-to-end deep learning project for urban flood-risk forecasting from
+asynchronous multimodal observations. It begins with a controlled synthetic
+pipeline for meteorology, remote sensing, GIS risk, and crowdsourced reports,
+and now adds an isolated physical-data benchmark on **LarNO UKEA** and
+**UrbanFlood24**.
 
 The historical single-horizon benchmark is led by a preserved **Conv-LSTM**
 checkpoint. Two additional architecture attempts are included for comparison:
@@ -11,19 +12,69 @@ checkpoint. Two additional architecture attempts are included for comparison:
 - **Conv-LSTM + Attention**
 - **CNN-Temporal Transformer**
 
-The main takeaway is limited to this synthetic benchmark: on the historical
-60-event split, the original Conv-LSTM is the strongest of the tested models.
-The separate Batch 4 multi-horizon benchmark adds three strong baselines and a
-Conv-LSTM U-Net; under its controlled three-epoch budget, **3D CNN wins**. The
-two benchmarks use different schemas and protocols and are not directly
-comparable.
+The repository now contains three evidence tracks with separate schemas and
+protocols: the preserved historical synthetic benchmark, the Batch 4
+multi-horizon strong-baseline benchmark, and the new external physical-data
+benchmark. They are reported separately and are not treated as directly
+interchangeable scores.
 
 For a detailed Chinese account of the complete development history, workload,
 successful and unsuccessful experiments, quantitative results, and engineering
 capabilities, see
 [PROJECT_FULL_EVOLUTION_REPORT.md](PROJECT_FULL_EVOLUTION_REPORT.md).
 
-## Result Snapshot
+For the external-data audit, 42-run protocol, complete tables, figure guide,
+limitations, and reproduction commands, see
+[EXTERNAL_PHYSICAL_DATA_EXPERIMENTS.md](EXTERNAL_PHYSICAL_DATA_EXPERIMENTS.md).
+
+## External Physical-Data Benchmark
+
+The new benchmark uses a common `8 m / 5 min` protocol, 60 minutes of input,
+joint forecasts at `5/15/30/60 min`, physical water depth in metres, and flood
+extent at `0.10 m`. Model variants live in separate files; the historical
+Conv-LSTM source and checkpoints are unchanged.
+
+**LarNO UKEA:** five seeds, official event-disjoint split, and all available
+`234/52/312` train/validation/test windows per run.
+
+| Model | MAE cm | RMSE cm | CSI | MAE reduction vs persistence | CSI gain | Latency ms/sample | Peak CUDA MB |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **Conv-LSTM** | **1.715 +/- 0.060** | **6.720 +/- 0.304** | **0.7713 +/- 0.0131** | **23.9%** | **+8.3 pp** | 1.64 | **23.4** |
+| Conv-LSTM + Attention | 1.911 +/- 0.092 | 7.229 +/- 0.244 | 0.7583 +/- 0.0095 | 15.1% | +7.0 pp | **1.55** | 35.9 |
+| CNN-Temporal Transformer | 1.795 +/- 0.067 | 6.839 +/- 0.338 | 0.7692 +/- 0.0173 | 20.3% | +8.1 pp | 3.94 | 199.4 |
+
+At 60 minutes, Conv-LSTM reduces MAE from `4.911 cm` to `3.589 cm`
+(`26.9%`) and raises CSI from `0.4863` to `0.6453` (`+15.9 pp`). All three
+models beat persistence on aggregate; Conv-LSTM gives the strongest current
+accuracy-efficiency balance.
+
+**UrbanFlood24:** three locations, three seeds, all events covered, and a
+controlled cap of eight samples per event (`256/64/128` samples per run).
+These are multi-seed sparse-sampling results, not a full-window claim.
+
+| Model | Cross-location MAE cm | RMSE cm | CSI | MAE reduction vs persistence | CSI gain |
+|---|---:|---:|---:|---:|---:|
+| **Conv-LSTM** | **0.611 +/- 0.184** | 2.967 +/- 0.281 | 0.8272 +/- 0.0352 | **10.4%** | +1.65 pp |
+| Conv-LSTM + Attention | 0.615 +/- 0.187 | 3.033 +/- 0.304 | 0.8236 +/- 0.0403 | 9.8% | +1.29 pp |
+| CNN-Temporal Transformer | 0.634 +/- 0.203 | **2.862 +/- 0.361** | **0.8329 +/- 0.0353** | 7.3% | **+2.22 pp** |
+
+Conv-LSTM has the lowest MAE in all three UrbanFlood24 locations, while the
+Transformer has the highest CSI in all three. This is a useful deployment
+tradeoff rather than a single universal winner.
+
+![Cross-dataset generalization](docs/figures/cross_dataset_generalization.png)
+
+![UKEA forecast-horizon curves](docs/figures/larno_ukea_ukea_horizon_curves.png)
+
+The representative UKEA test sample below is selected by target change, not by
+model error. At `+60 min`, Conv-LSTM reduces sample MAE from `46.24 cm` to
+`27.83 cm` and raises flood-extent CSI from `0.390` to `0.891`.
+
+![UKEA spatial forecast](docs/figures/larno_ukea_ukea_spatial_forecast.png)
+
+![UKEA spatial error](docs/figures/larno_ukea_ukea_spatial_error.png)
+
+## Historical Synthetic Result Snapshot
 
 All model rows are historical legacy-schema results using the same synthetic
 fused dataset, split seed `44`, test events, and risk threshold `0.28`
@@ -288,6 +339,7 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |-- README.md                          # GitHub project homepage
 |-- PROJECT.md                         # Concise project report
 |-- PROJECT_FULL_EVOLUTION_REPORT.md  # Complete Chinese evolution and results report
+|-- EXTERNAL_PHYSICAL_DATA_EXPERIMENTS.md # UrbanFlood24 and LarNO UKEA benchmark
 |-- DATA_CARD.md                       # Synthetic data and field definitions
 |-- LIMITATIONS.md                     # Valid-use boundaries
 |-- CHANGELOG.md                       # Auditable engineering changes
@@ -297,6 +349,7 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |-- P0_COMPLETION.md                   # Correctness and audit evidence map
 |-- artifacts/baseline/                # Lightweight committed audit manifests
 |-- docs/figures/                      # GitHub-ready showcase figures
+|-- docs/experiments/external_physical_v1/ # Public external-result tables and manifests
 |-- src/
 |   |-- generate_synthetic.py          # Synthetic event generation
 |   |-- align_modalities.py            # Async multimodal alignment
@@ -323,6 +376,12 @@ channels = 23 (current default), 19 (Batch 1), or 13 (legacy checkpoint compatib
 |   |-- train_batch4.py                # Shared Batch 4 training protocol
 |   |-- evaluate_batch4.py             # Horizon/event metrics and efficiency
 |   |-- run_batch4.py                  # Five-seed orchestration and bootstrap
+|   |-- external_data.py               # Streaming UrbanFlood24/UKEA adapter
+|   |-- external_models.py             # Isolated physical-data model copies
+|   |-- train_external.py              # Physical multi-horizon training/evaluation
+|   |-- run_external_benchmark.py      # Resumable multi-model, multi-seed runner
+|   |-- summarize_external.py          # Tables, plots, and protocol checks
+|   |-- visualize_external_predictions.py # Spatial forecast/error figures
 |   |-- experiments/                   # Event splits and statistical summaries
 |   `-- make_model_showcase.py         # Publication-ready figures and report
 |-- scripts/capture_baseline.py        # Environment, metric, split, and hash audit
@@ -460,6 +519,25 @@ python -m src.run_batch4 \
   --epochs 3 --batch_size 8 --hidden 12 --threshold 0.28 --device auto
 ```
 
+Run the resumable external physical-data benchmark after downloading UKEA:
+
+```bash
+python -m src.run_external_benchmark \
+  --dataset larno_ukea \
+  --larno_root ../external_datasets/larno_ukea_8m_5min \
+  --output_root runs/external_physical/benchmark_v1 \
+  --models convlstm,convlstm_attention,cnn_temporal_transformer \
+  --seeds 42,44,52,77,2026 --split_seed 44 \
+  --epochs 10 --batch_size 4 --hidden 16 \
+  --max_train_samples_per_event 64 --max_eval_samples_per_event 0 \
+  --lr 0.0003 --device auto --amp
+```
+
+The runner skips completed metrics by default and rebuilds the aggregate CSV,
+JSON, Markdown, horizon, threshold, skill-gain, and efficiency outputs. Urban
+locations use `--dataset urbanflood24 --location location1` (or `2/3`) and
+`--urban_root ../urbanflood24`.
+
 ## GitHub Packaging
 
 The repository intentionally ignores generated data, checkpoints, and run
@@ -480,12 +558,13 @@ if needed.
 
 ## Limitations
 
-The reported results validate an engineering pipeline on synthetic data. They
-do not establish real-city forecasting performance. Normalized depth is not a
-physical water-depth unit, the synthetic generator can make relationships more
-regular than real observations, and the current uncertainty band is a
-heuristic modality-disagreement band rather than a calibrated 95% confidence
-interval. See [LIMITATIONS.md](LIMITATIONS.md) and [DATA_CARD.md](DATA_CARD.md).
+The historical and Batch 4 results validate controlled synthetic pipelines.
+The external benchmark adds physical-unit hydraulic simulation data, but not
+field sensors or surveyed real-city inundation, so it still does not establish
+operational forecasting performance. Historical `normalized_depth` is not a
+physical water-depth unit, and the uncertainty band remains a heuristic rather
+than a calibrated 95% interval. See [LIMITATIONS.md](LIMITATIONS.md) and
+[DATA_CARD.md](DATA_CARD.md).
 
 CSI and IoU are numerically identical for the current binary flood-mask
 definition, so the main tables display CSI and treat IoU as an alias.

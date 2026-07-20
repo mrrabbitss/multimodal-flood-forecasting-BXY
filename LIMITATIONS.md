@@ -19,9 +19,18 @@
   intervals.
 - Threshold selection, hyperparameter tuning, and early stopping must use
   validation data. The test set must remain fixed for final reporting.
-- The project now includes multi-seed corrected-schema experiments, but it
-  still lacks public-data external validation, calibrated uncertainty, and a
-  physical hydraulic model.
+- The project now includes external validation on the public UrbanFlood24 and
+  LarNO UKEA physical simulation datasets. It still lacks validation against
+  field sensors, gauge observations, surveyed inundation, or operational city
+  emergency workflows.
+- The UKEA benchmark uses all available windows and five training seeds, but it
+  contains only 20 events from one domain.
+- The UrbanFlood24 benchmark covers all three locations and three seeds, but
+  caps each event at eight sampled windows. It is a controlled sparse-sampling
+  benchmark, not the final full-window five-seed result.
+- External benchmark seed means and deviations are reported, but paired
+  per-event bootstrap intervals and cross-dataset transfer tests remain future
+  work.
 - The Batch 2 rainfall comparison is a controlled 20-event, single-seed,
   three-epoch diagnostic with three held-out events. Its improvement must be
   confirmed by the later multi-seed experiment batch before becoming a main
@@ -33,4 +42,6 @@
   loss settings, but does not match parameter counts across architectures.
 - The Batch 4 three-epoch budget may favor faster-converging models. The 3D CNN
   win and Conv-LSTM U-Net loss apply only to this controlled configuration.
-- Forecast leads are simulation steps and have no validated mapping to hours.
+- Historical synthetic forecast leads are simulation steps with no validated
+  mapping to hours. The external benchmark separately uses source-aligned
+  5-minute steps and reports `5/15/30/60 min` physical horizons.
