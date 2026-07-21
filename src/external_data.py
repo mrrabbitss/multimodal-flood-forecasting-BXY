@@ -243,6 +243,7 @@ class ExternalFloodDataset(Dataset):
         self.patch_size = int(patch_size)
         self.patch_stride = int(patch_stride or patch_size)
         self.max_samples_per_event = None if not max_samples_per_event else int(max_samples_per_event)
+        self.seed = int(seed)
         self.depth_scale_m = float(depth_scale_m)
         self.rain_scale_mm_5min = float(rain_scale_mm_5min)
         if self.input_len < 1 or not self.lead_times or self.lead_times[0] < 1:
@@ -268,7 +269,7 @@ class ExternalFloodDataset(Dataset):
                 for patch_x in _patch_positions(event.width, self.patch_size, self.patch_stride)
             ]
             if self.max_samples_per_event and len(event_samples) > self.max_samples_per_event:
-                rng = random.Random(_stable_seed(seed, event.event_id))
+                rng = random.Random(_stable_seed(self.seed, event.event_id))
                 selected = sorted(rng.sample(range(len(event_samples)), self.max_samples_per_event))
                 event_samples = [event_samples[index] for index in selected]
             self.samples.extend(event_samples)
@@ -471,6 +472,7 @@ class ExternalFloodDataset(Dataset):
             "time_step_minutes": 5,
             "patch_size": self.patch_size,
             "patch_stride": self.patch_stride,
+            "sampling_seed": self.seed,
             "depth_scale_m": self.depth_scale_m,
             "rain_scale_mm_5min": self.rain_scale_mm_5min,
             "num_events": len(self.events),

@@ -20,8 +20,13 @@ from .external_data import (
     discover_urbanflood24,
     split_train_validation,
 )
-from .external_models import build_external_model, count_external_parameters
-from .model_variants import model_display_name, normalize_model_type
+from .external_models import (
+    EXTERNAL_MODEL_TYPES,
+    build_external_model,
+    count_external_parameters,
+    external_model_display_name,
+    normalize_external_model_type,
+)
 from .utils import ensure_dir, save_json, set_seed
 
 
@@ -78,6 +83,41 @@ def masked_physical_loss(
     }
 
 
+DEPTH_BINS = (
+    ("0.00-0.10", 0.00, 0.10),
+    ("0.10-0.30", 0.10, 0.30),
+    ("0.30-0.50", 0.30, 0.50),
+    ("0.50+", 0.50, None),
+)
+
+
+def _inner_boundary(binary: np.ndarray, valid: np.ndarray) -> np.ndarray:
+    boundary = np.zeros_like(binary, dtype=bool)
+    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        shifted_binary = np.roll(binary, (dy, dx), axis=(0, 1))
+        shifted_valid = np.roll(valid, (dy, dx), axis=(0, 1))
+        if dy == -1:
+            shifted_valid[-1, :] = False
+        elif dy == 1:
+            shifted_valid[0, :] = False
+        elif dx == -1:
+            shifted_valid[:, -1] = False
+        else:
+            shifted_valid[:, 0] = False
+        boundary |= binary & valid & shifted_valid & ~shifted_binary
+    return boundary
+
+
+def _dilate(binary: np.ndarray, radius: int = 1) -> np.ndarray:
+    padded = np.pad(binary, radius, mode="constant", constant_values=False)
+    output = np.zeros_like(binary, dtype=bool)
+    height, width = binary.shape
+    for dy in range(2 * radius + 1):
+        for dx in range(2 * radius + 1):
+            output |= padded[dy : dy + height, dx : dx + width]
+    return output
+
+
 class PhysicalMetricAccumulator:
     def __init__(self, horizons: int, thresholds: Sequence[float], primary_threshold: float) -> None:
         self.horizons = int(horizons)
@@ -88,8 +128,20 @@ class PhysicalMetricAccumulator:
         self.squared = np.zeros(self.horizons, dtype=np.float64)
         self.wet_count = np.zeros(self.horizons, dtype=np.int64)
         self.wet_absolute = np.zeros(self.horizons, dtype=np.float64)
+        self.wet_squared = np.zeros(self.horizons, dtype=np.float64)
+        self.dry_count = np.zeros(self.horizons, dtype=np.int64)
+        self.dry_prediction = np.zeros(self.horizons, dtype=np.float64)
         self.peak_count = np.zeros(self.horizons, dtype=np.int64)
         self.peak_absolute = np.zeros(self.horizons, dtype=np.float64)
+        self.depth_bins = {
+            label: {
+                "count": np.zeros(self.horizons, dtype=np.int64),
+                "absolute": np.zeros(self.horizons, dtype=np.float64),
+                "squared": np.zeros(self.horizons, dtype=np.float64),
+            }
+            for label, _, _ in DEPTH_BINS
+        }
+        self.boundary = np.zeros((self.horizons, 4), dtype=np.int64)
         self.confusion = {
             threshold: np.zeros((self.horizons, 4), dtype=np.int64) for threshold in self.thresholds
         }
@@ -109,6 +161,19 @@ class PhysicalMetricAccumulator:
             wet = truth >= self.primary_threshold
             self.wet_count[horizon] += int(wet.sum())
             self.wet_absolute[horizon] += np.abs(difference[wet]).sum(dtype=np.float64)
+            self.wet_squared[horizon] += np.square(difference[wet]).sum(dtype=np.float64)
+            dry = ~wet
+            self.dry_count[horizon] += int(dry.sum())
+            self.dry_prediction[horizon] += pred[dry].sum(dtype=np.float64)
+
+            for label, lower, upper in DEPTH_BINS:
+                selected = truth >= lower
+                if upper is not None:
+                    selected &= truth < upper
+                bin_difference = difference[selected]
+                self.depth_bins[label]["count"][horizon] += int(selected.sum())
+                self.depth_bins[label]["absolute"][horizon] += np.abs(bin_difference).sum(dtype=np.float64)
+                self.depth_bins[label]["squared"][horizon] += np.square(bin_difference).sum(dtype=np.float64)
 
             for sample_index in range(target_np.shape[0]):
                 sample_valid = mask_np[sample_index, 0]
@@ -117,6 +182,19 @@ class PhysicalMetricAccumulator:
                     target_peak = float(target_np[sample_index, horizon][sample_valid].max())
                     self.peak_absolute[horizon] += abs(pred_peak - target_peak)
                     self.peak_count[horizon] += 1
+
+                    prediction_extent = (prediction_np[sample_index, horizon] >= self.primary_threshold) & sample_valid
+                    target_extent = (target_np[sample_index, horizon] >= self.primary_threshold) & sample_valid
+                    prediction_boundary = _inner_boundary(prediction_extent, sample_valid)
+                    target_boundary = _inner_boundary(target_extent, sample_valid)
+                    matched_prediction = int((prediction_boundary & _dilate(target_boundary)).sum())
+                    matched_target = int((target_boundary & _dilate(prediction_boundary)).sum())
+                    self.boundary[horizon] += (
+                        matched_prediction,
+                        int(prediction_boundary.sum()),
+                        matched_target,
+                        int(target_boundary.sum()),
+                    )
 
             for threshold in self.thresholds:
                 pred_binary = pred >= threshold
@@ -131,6 +209,19 @@ class PhysicalMetricAccumulator:
         rows = []
         for horizon, lead in enumerate(lead_times):
             count = max(int(self.count[horizon]), 1)
+            wet_count = max(int(self.wet_count[horizon]), 1)
+            dry_count = max(int(self.dry_count[horizon]), 1)
+            matched_prediction, prediction_boundary, matched_target, target_boundary = (
+                int(value) for value in self.boundary[horizon]
+            )
+            boundary_precision = matched_prediction / max(prediction_boundary, 1)
+            boundary_recall = matched_target / max(target_boundary, 1)
+            if prediction_boundary == 0 and target_boundary == 0:
+                boundary_f1 = 1.0
+            else:
+                boundary_f1 = 2.0 * boundary_precision * boundary_recall / max(
+                    boundary_precision + boundary_recall, 1e-12
+                )
             row = {
                 "lead_steps": int(lead),
                 "lead_minutes": int(lead * time_step_minutes),
@@ -139,22 +230,59 @@ class PhysicalMetricAccumulator:
                 "rmse_m": float(np.sqrt(self.squared[horizon] / count)),
                 "mae_cm": float(100.0 * self.absolute[horizon] / count),
                 "rmse_cm": float(100.0 * np.sqrt(self.squared[horizon] / count)),
-                "wet_mae_m": float(self.wet_absolute[horizon] / max(int(self.wet_count[horizon]), 1)),
+                "wet_mae_m": float(self.wet_absolute[horizon] / wet_count),
+                "wet_rmse_m": float(np.sqrt(self.wet_squared[horizon] / wet_count)),
                 "wet_pixels": int(self.wet_count[horizon]),
+                "dry_prediction_mean_m": float(self.dry_prediction[horizon] / dry_count),
+                "dry_pixels": int(self.dry_count[horizon]),
                 "peak_depth_mae_m": float(
                     self.peak_absolute[horizon] / max(int(self.peak_count[horizon]), 1)
                 ),
+                "boundary_precision": float(boundary_precision),
+                "boundary_recall": float(boundary_recall),
+                "boundary_f1": float(boundary_f1),
+                "boundary_tolerance_pixels": 1,
+                "depth_bin_metrics": {},
                 "threshold_metrics": {},
             }
+            for label, _, _ in DEPTH_BINS:
+                bin_count = int(self.depth_bins[label]["count"][horizon])
+                denominator = max(bin_count, 1)
+                row["depth_bin_metrics"][label] = {
+                    "pixels": bin_count,
+                    "mae_m": float(self.depth_bins[label]["absolute"][horizon] / denominator),
+                    "rmse_m": float(np.sqrt(self.depth_bins[label]["squared"][horizon] / denominator)),
+                }
             for threshold in self.thresholds:
                 tp, fp, fn, tn = (int(value) for value in self.confusion[threshold][horizon])
                 csi = tp / max(tp + fp + fn, 1)
                 pod = tp / max(tp + fn, 1)
                 far = fp / max(tp + fp, 1)
-                metrics = {"tp": tp, "fp": fp, "fn": fn, "tn": tn, "csi": csi, "pod": pod, "far": far}
+                f1 = 2 * tp / max(2 * tp + fp + fn, 1)
+                false_positive_rate = fp / max(fp + tn, 1)
+                metrics = {
+                    "tp": tp,
+                    "fp": fp,
+                    "fn": fn,
+                    "tn": tn,
+                    "csi": csi,
+                    "pod": pod,
+                    "far": far,
+                    "f1": f1,
+                    "false_positive_rate": false_positive_rate,
+                }
                 row["threshold_metrics"][f"{threshold:.2f}"] = metrics
                 if abs(threshold - self.primary_threshold) < 1e-9:
-                    row.update({"csi": csi, "pod": pod, "far": far, "threshold_m": threshold})
+                    row.update(
+                        {
+                            "csi": csi,
+                            "pod": pod,
+                            "far": far,
+                            "f1": f1,
+                            "dry_false_positive_rate": false_positive_rate,
+                            "threshold_m": threshold,
+                        }
+                    )
             rows.append(row)
         return rows
 
@@ -168,12 +296,21 @@ def evaluate(
     primary_threshold: float,
     depth_scale_m: float,
     amp: bool,
+    include_per_event: bool = False,
 ) -> dict:
     if model is not None:
         model.eval()
     model_metrics = PhysicalMetricAccumulator(len(lead_times), thresholds, primary_threshold)
     persistence_metrics = PhysicalMetricAccumulator(len(lead_times), thresholds, primary_threshold)
+    event_model_metrics: dict[str, PhysicalMetricAccumulator] = {}
+    event_persistence_metrics: dict[str, PhysicalMetricAccumulator] = {}
+    event_samples: dict[str, int] = defaultdict(int)
+    event_peak_time_errors: dict[str, list[float]] = defaultdict(list)
+    event_persistence_peak_time_errors: dict[str, list[float]] = defaultdict(list)
+    peak_time_errors: list[float] = []
+    persistence_peak_time_errors: list[float] = []
     losses: list[float] = []
+    lead_minutes = torch.tensor([int(lead) * 5 for lead in lead_times], device=device)
     with torch.inference_mode():
         for batch in loader:
             x = batch["x"].to(device, non_blocking=True)
@@ -189,12 +326,74 @@ def evaluate(
                 losses.append(float(loss.detach().item()))
             model_metrics.update(prediction, target, mask)
             persistence_metrics.update(persistence, target, mask)
-    return {
+            if include_per_event:
+                valid = mask.expand_as(target).bool()
+                floor = torch.finfo(prediction.dtype).min
+                prediction_peak = prediction.masked_fill(~valid, floor).amax(dim=(-2, -1))
+                persistence_peak = persistence.masked_fill(~valid, floor).amax(dim=(-2, -1))
+                target_peak = target.masked_fill(~valid, floor).amax(dim=(-2, -1))
+                target_peak_time = lead_minutes[target_peak.argmax(dim=1)]
+                prediction_errors = (
+                    lead_minutes[prediction_peak.argmax(dim=1)] - target_peak_time
+                ).abs().float().cpu().tolist()
+                persistence_errors = (
+                    lead_minutes[persistence_peak.argmax(dim=1)] - target_peak_time
+                ).abs().float().cpu().tolist()
+                peak_time_errors.extend(prediction_errors)
+                persistence_peak_time_errors.extend(persistence_errors)
+
+                for sample_index, event_id_value in enumerate(batch["event_id"]):
+                    event_id = str(event_id_value)
+                    if event_id not in event_model_metrics:
+                        event_model_metrics[event_id] = PhysicalMetricAccumulator(
+                            len(lead_times), thresholds, primary_threshold
+                        )
+                        event_persistence_metrics[event_id] = PhysicalMetricAccumulator(
+                            len(lead_times), thresholds, primary_threshold
+                        )
+                    sample_slice = slice(sample_index, sample_index + 1)
+                    event_model_metrics[event_id].update(
+                        prediction[sample_slice], target[sample_slice], mask[sample_slice]
+                    )
+                    event_persistence_metrics[event_id].update(
+                        persistence[sample_slice], target[sample_slice], mask[sample_slice]
+                    )
+                    event_samples[event_id] += 1
+                    event_peak_time_errors[event_id].append(float(prediction_errors[sample_index]))
+                    event_persistence_peak_time_errors[event_id].append(
+                        float(persistence_errors[sample_index])
+                    )
+    result = {
         "loss": float(np.mean(losses)) if losses else None,
         "per_horizon": model_metrics.finalize(lead_times),
         "persistence_per_horizon": persistence_metrics.finalize(lead_times),
         "samples": int(len(loader.dataset)),
     }
+    if include_per_event:
+        result.update(
+            {
+                "peak_time_mae_min": float(np.mean(peak_time_errors)) if peak_time_errors else 0.0,
+                "persistence_peak_time_mae_min": float(np.mean(persistence_peak_time_errors))
+                if persistence_peak_time_errors
+                else 0.0,
+                "per_event": [
+                    {
+                        "event_id": event_id,
+                        "samples": int(event_samples[event_id]),
+                        "peak_time_mae_min": float(np.mean(event_peak_time_errors[event_id])),
+                        "persistence_peak_time_mae_min": float(
+                            np.mean(event_persistence_peak_time_errors[event_id])
+                        ),
+                        "per_horizon": event_model_metrics[event_id].finalize(lead_times),
+                        "persistence_per_horizon": event_persistence_metrics[event_id].finalize(
+                            lead_times
+                        ),
+                    }
+                    for event_id in sorted(event_model_metrics)
+                ],
+            }
+        )
+    return result
 
 
 def benchmark(
@@ -296,7 +495,7 @@ def main() -> None:
     parser.add_argument("--urban_root", default="../urbanflood24")
     parser.add_argument("--larno_root", default="../external_datasets/larno_ukea_8m_5min")
     parser.add_argument("--location", default="location1", choices=["location1", "location2", "location3"])
-    parser.add_argument("--model_type", default="convlstm", choices=["convlstm", "convlstm_attention", "cnn_temporal_transformer"])
+    parser.add_argument("--model_type", default="convlstm", help=f"One of: {', '.join(EXTERNAL_MODEL_TYPES)}")
     parser.add_argument("--output_dir", default="runs/external_physical/pilot")
     parser.add_argument("--input_len", type=int, default=12)
     parser.add_argument("--lead_times", default="1,3,6,12")
@@ -317,19 +516,29 @@ def main() -> None:
     parser.add_argument("--dropout", type=float, default=0.0)
     parser.add_argument("--attention_dropout", type=float, default=0.0)
     parser.add_argument("--transformer_heads", type=int, default=4)
+    parser.add_argument("--fno_modes", type=int, default=8)
+    parser.add_argument("--fno_layers", type=int, default=3)
+    parser.add_argument("--simvp_blocks", type=int, default=4)
     parser.add_argument("--use_residual", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--residual_scale", type=float, default=1.0)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
+    parser.add_argument("--early_stop_patience", type=int, default=0)
+    parser.add_argument("--min_delta", type=float, default=1e-5)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--split_seed", type=int, default=44)
     parser.add_argument("--num_workers", type=int, default=0)
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument("--amp", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--progress", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--selection_only",
+        action="store_true",
+        help="Stop after validation-model selection without reading the test loader.",
+    )
     args = parser.parse_args()
 
-    args.model_type = normalize_model_type(args.model_type)
+    args.model_type = normalize_external_model_type(args.model_type)
     lead_times = parse_int_list(args.lead_times)
     thresholds = parse_float_list(args.thresholds)
     if args.primary_threshold not in thresholds:
@@ -348,7 +557,6 @@ def main() -> None:
         input_len=args.input_len,
         lead_times=lead_times,
         patch_size=args.patch_size,
-        seed=args.seed,
         depth_scale_m=args.depth_scale_m,
         rain_scale_mm_5min=args.rain_scale_mm_5min,
     )
@@ -356,6 +564,7 @@ def main() -> None:
         train_events,
         patch_stride=args.train_patch_stride,
         max_samples_per_event=args.max_train_samples_per_event,
+        seed=args.seed,
         **dataset_kwargs,
     )
     eval_cap = args.max_eval_samples_per_event or None
@@ -363,12 +572,14 @@ def main() -> None:
         validation_events,
         patch_stride=args.eval_patch_stride,
         max_samples_per_event=eval_cap,
+        seed=args.split_seed,
         **dataset_kwargs,
     )
     test_dataset = ExternalFloodDataset(
         test_events,
         patch_stride=args.eval_patch_stride,
         max_samples_per_event=eval_cap,
+        seed=args.split_seed,
         **dataset_kwargs,
     )
     loader_kwargs = dict(
@@ -393,6 +604,9 @@ def main() -> None:
         max_input_len=args.input_len,
         use_residual=args.use_residual,
         residual_scale=args.residual_scale,
+        fno_modes=args.fno_modes,
+        fno_layers=args.fno_layers,
+        simvp_blocks=args.simvp_blocks,
     ).to(device)
     parameter_count = count_external_parameters(model)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
@@ -405,7 +619,8 @@ def main() -> None:
     save_json(validation_dataset.manifest(), metric_dir / "validation_manifest.json")
     save_json(test_dataset.manifest(), metric_dir / "test_manifest.json")
 
-    print(f"Dataset: {args.dataset}; device: {device}; model: {model_display_name(args.model_type)}")
+    model_label = external_model_display_name(args.model_type)
+    print(f"Dataset: {args.dataset}; device: {device}; model: {model_label}")
     print(f"Events train/val/test: {len(train_events)}/{len(validation_events)}/{len(test_events)}")
     print(f"Samples train/val/test: {len(train_dataset)}/{len(validation_dataset)}/{len(test_dataset)}")
     print(f"Parameters: {parameter_count:,}")
@@ -417,9 +632,9 @@ def main() -> None:
         torch.save(
             {
                 "model_state": model.state_dict(),
-                "schema_version": "external_physical_v1",
+                "schema_version": "external_physical_v2",
                 "model_type": args.model_type,
-                "model_label": model_display_name(args.model_type),
+                "model_label": model_label,
                 "input_channels": len(EXTERNAL_CHANNEL_NAMES),
                 "channel_names": list(EXTERNAL_CHANNEL_NAMES),
                 "hidden_channels": args.hidden,
@@ -455,6 +670,8 @@ def main() -> None:
     best_loss = float(initial_validation["loss"])
     save_best_checkpoint()
     print(f"Epoch 0 persistence initialization: val={best_loss:.5f}")
+    training_start = time.time()
+    epochs_without_improvement = 0
 
     for epoch in range(1, args.epochs + 1):
         model.train()
@@ -499,13 +716,54 @@ def main() -> None:
             f"Epoch {epoch}: train={train_loss:.5f}, val={validation_loss:.5f}, "
             f"val_mae={history['val_mae_cm'][-1]:.3f} cm, val_csi={history['val_csi'][-1]:.4f}"
         )
-        if validation_loss < best_loss:
+        if validation_loss < best_loss - args.min_delta:
             best_loss = validation_loss
             best_epoch = epoch
+            epochs_without_improvement = 0
             save_best_checkpoint()
+        else:
+            epochs_without_improvement += 1
+        if args.early_stop_patience > 0 and epochs_without_improvement >= args.early_stop_patience:
+            print(f"Early stopping at epoch {epoch}; best epoch was {best_epoch}.")
+            break
 
+    training_time_sec = time.time() - training_start
     checkpoint = torch.load(checkpoint_dir / "best.pt", map_location=device)
     model.load_state_dict(checkpoint["model_state"])
+    if args.selection_only:
+        selection_metrics = evaluate(
+            model,
+            validation_loader,
+            device,
+            lead_times,
+            thresholds,
+            args.primary_threshold,
+            args.depth_scale_m,
+            args.amp,
+        )
+        selection_metrics.update(
+            {
+                "schema_version": "external_selection_v1",
+                "dataset": args.dataset,
+                "location": args.location if args.dataset == "urbanflood24" else "ukea",
+                "model_type": args.model_type,
+                "model_label": model_label,
+                "seed": args.seed,
+                "split_seed": args.split_seed,
+                "learning_rate": args.lr,
+                "best_epoch": int(checkpoint.get("best_epoch", best_epoch)),
+                "epochs_ran": int(len(history["train_loss"])),
+                "best_validation_loss": float(best_loss),
+                "training_time_sec": float(training_time_sec),
+                "validation_events": [event.event_id for event in validation_events],
+                "test_evaluated": False,
+            }
+        )
+        save_json(history, metric_dir / "train_history.json")
+        save_json(selection_metrics, metric_dir / "selection_metrics.json")
+        print(f"Selection-only run finished without test evaluation: {metric_dir / 'selection_metrics.json'}")
+        return
+    evaluation_start = time.time()
     test_metrics = evaluate(
         model,
         test_loader,
@@ -515,33 +773,49 @@ def main() -> None:
         args.primary_threshold,
         args.depth_scale_m,
         args.amp,
+        include_per_event=True,
     )
+    evaluation_time_sec = time.time() - evaluation_start
     test_metrics.update(
         {
-            "schema_version": "external_physical_v1",
+            "schema_version": "external_physical_v2",
+            "metric_schema_version": "physical_metrics_v2",
             "dataset": args.dataset,
             "location": args.location if args.dataset == "urbanflood24" else "ukea",
             "model_type": args.model_type,
-            "model_label": model_display_name(args.model_type),
+            "model_label": model_label,
             "parameter_count": parameter_count,
             "device": str(device),
             "cuda_device": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
             "seed": args.seed,
             "split_seed": args.split_seed,
             "best_epoch": int(checkpoint.get("best_epoch", best_epoch)),
+            "epochs_requested": int(args.epochs),
+            "epochs_ran": int(len(history["train_loss"])),
             "train_events": [event.event_id for event in train_events],
             "validation_events": [event.event_id for event in validation_events],
             "test_events": [event.event_id for event in test_events],
             "thresholds_m": list(thresholds),
             "primary_threshold_m": args.primary_threshold,
+            "training_time_sec": float(training_time_sec),
+            "evaluation_time_sec": float(evaluation_time_sec),
             "runtime_sec": float(time.time() - start_time),
-            "protocol": "state-aware residual nowcast at 8 m / 5 min; event-disjoint split",
+            "protocol": "state-aware flood nowcast at 8 m / 5 min; event-disjoint split",
+            "protocol_details": {
+                "rain_forcing": "past_only",
+                "prediction_mode": "residual" if args.use_residual else "absolute",
+                "input_minutes": int(args.input_len * 5),
+                "lead_minutes": [int(lead * 5) for lead in lead_times],
+                "early_stop_patience": int(args.early_stop_patience),
+                "minimum_improvement": float(args.min_delta),
+                "evaluation_sampling_seed": int(args.split_seed),
+            },
         }
     )
     test_metrics.update(benchmark(model, test_loader, device, args.amp))
     save_json(history, metric_dir / "train_history.json")
     save_json(test_metrics, metric_dir / "test_metrics.json")
-    _plot_results(history, test_metrics, output_dir, model_display_name(args.model_type))
+    _plot_results(history, test_metrics, output_dir, model_label)
     print(f"Finished. Metrics: {metric_dir / 'test_metrics.json'}")
 
 

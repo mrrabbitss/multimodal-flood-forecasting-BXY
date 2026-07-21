@@ -1,4 +1,4 @@
-# Multimodal Flood Risk Forecasting with Conv-LSTM
+# Multimodal Flood Forecasting with Conv-LSTM and Strong Baselines
 
 An end-to-end deep learning project for urban flood-risk forecasting from
 asynchronous multimodal observations. It begins with a controlled synthetic
@@ -7,10 +7,14 @@ and now adds an isolated physical-data benchmark on **LarNO UKEA** and
 **UrbanFlood24**.
 
 The historical single-horizon benchmark is led by a preserved **Conv-LSTM**
-checkpoint. Two additional architecture attempts are included for comparison:
+checkpoint. The external physical-data track now compares six architectures:
 
+- **Conv-LSTM**
 - **Conv-LSTM + Attention**
 - **CNN-Temporal Transformer**
+- **U-RNN Lite (adapted)**
+- **FNO2D-History (adapted)**
+- **SimVP Lite (adapted)**
 
 The repository now contains three evidence tracks with separate schemas and
 protocols: the preserved historical synthetic benchmark, the Batch 4
@@ -23,56 +27,65 @@ successful and unsuccessful experiments, quantitative results, and engineering
 capabilities, see
 [PROJECT_FULL_EVOLUTION_REPORT.md](PROJECT_FULL_EVOLUTION_REPORT.md).
 
-For the external-data audit, 42-run protocol, complete tables, figure guide,
-limitations, and reproduction commands, see
+For the new six-model, five-seed UKEA leaderboard and paired event analysis,
+see [EXTERNAL_STRONG_BASELINE_LEADERBOARD.md](EXTERNAL_STRONG_BASELINE_LEADERBOARD.md).
+For the earlier 42-run UKEA/UrbanFlood24 audit, complete tables, figure guide,
+and limitations, see
 [EXTERNAL_PHYSICAL_DATA_EXPERIMENTS.md](EXTERNAL_PHYSICAL_DATA_EXPERIMENTS.md).
 
 ## External Physical-Data Benchmark
 
-The new benchmark uses a common `8 m / 5 min` protocol, 60 minutes of input,
-joint forecasts at `5/15/30/60 min`, physical water depth in metres, and flood
-extent at `0.10 m`. Model variants live in separate files; the historical
-Conv-LSTM source and checkpoints are unchanged.
+The strict Batch 5 leaderboard uses LarNO UKEA at `8 m / 5 min`, 60 minutes of
+past-only input, joint `5/15/30/60 min` forecasts, an event-disjoint split, and
+five seeds. Learning rates are selected on validation events without computing
+test metrics. The 30 formal runs use the same `234/52/312`
+train/validation/test windows. Historical Conv-LSTM files and checkpoints are
+unchanged.
 
-**LarNO UKEA:** five seeds, official event-disjoint split, and all available
-`234/52/312` train/validation/test windows per run.
-
-| Model | MAE cm | RMSE cm | CSI | MAE reduction vs persistence | CSI gain | Latency ms/sample | Peak CUDA MB |
+| Model | MAE cm | RMSE cm | CSI | MAE gain vs persistence | CSI gain | Latency ms/sample | Peak inference CUDA MB |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **Conv-LSTM** | **1.715 +/- 0.060** | **6.720 +/- 0.304** | **0.7713 +/- 0.0131** | **23.9%** | **+8.3 pp** | 1.64 | **23.4** |
-| Conv-LSTM + Attention | 1.911 +/- 0.092 | 7.229 +/- 0.244 | 0.7583 +/- 0.0095 | 15.1% | +7.0 pp | **1.55** | 35.9 |
-| CNN-Temporal Transformer | 1.795 +/- 0.067 | 6.839 +/- 0.338 | 0.7692 +/- 0.0173 | 20.3% | +8.1 pp | 3.94 | 199.4 |
+| **Conv-LSTM** | **1.883 +/- 0.062** | 7.373 | 0.7504 | **16.4%** | +6.2 pp | 1.63 | **23.4** |
+| Conv-LSTM + Attention | 1.965 +/- 0.090 | 7.602 | 0.7413 | 12.8% | +5.3 pp | 1.66 | 35.9 |
+| CNN-Temporal Transformer | 1.971 +/- 0.111 | **7.343** | 0.7566 | 12.5% | +6.8 pp | 3.84 | 199.4 |
+| U-RNN Lite (adapted) | 2.033 +/- 0.079 | 7.945 | 0.7595 | 9.7% | +7.1 pp | 5.93 | 30.2 |
+| **FNO2D-History (adapted)** | 1.889 +/- 0.073 | 7.363 | **0.7883** | 16.1% | **+10.0 pp** | **0.61** | 36.3 |
+| SimVP Lite (adapted) | 1.986 +/- 0.085 | 7.897 | 0.7647 | 11.8% | +7.6 pp | 2.81 | 26.5 |
 
-At 60 minutes, Conv-LSTM reduces MAE from `4.911 cm` to `3.589 cm`
-(`26.9%`) and raises CSI from `0.4863` to `0.6453` (`+15.9 pp`). All three
-models beat persistence on aggregate; Conv-LSTM gives the strongest current
-accuracy-efficiency balance.
+The result is a useful two-winner tradeoff rather than a forced universal
+winner. Conv-LSTM retains the lowest mean MAE and lowest inference CUDA
+allocation. FNO2D-History has statistically indistinguishable event-level MAE
+(`+0.006 cm` versus Conv-LSTM; 95% CI `[-0.046, +0.067]`) while improving CSI
+by `+0.0577` (95% CI `[+0.0409, +0.0714]`, paired event permutation
+`p=0.00098`). It also gives the best boundary F1 (`0.9265`), lowest dry-cell
+predicted depth (`0.777 cm`), and strongest 60-minute CSI (`0.6841`).
 
-**UrbanFlood24:** three locations, three seeds, all events covered, and a
-controlled cap of eight samples per event (`256/64/128` samples per run).
-These are multi-seed sparse-sampling results, not a full-window claim.
+![Six-model UKEA overview](results/external_leaderboard_v2/figures/larno_ukea_ukea_model_overview.png)
 
-| Model | Cross-location MAE cm | RMSE cm | CSI | MAE reduction vs persistence | CSI gain |
-|---|---:|---:|---:|---:|---:|
-| **Conv-LSTM** | **0.611 +/- 0.184** | 2.967 +/- 0.281 | 0.8272 +/- 0.0352 | **10.4%** | +1.65 pp |
-| Conv-LSTM + Attention | 0.615 +/- 0.187 | 3.033 +/- 0.304 | 0.8236 +/- 0.0403 | 9.8% | +1.29 pp |
-| CNN-Temporal Transformer | 0.634 +/- 0.203 | **2.862 +/- 0.361** | **0.8329 +/- 0.0353** | 7.3% | **+2.22 pp** |
+![Forecast-horizon comparison](results/external_leaderboard_v2/figures/larno_ukea_ukea_horizon_curves.png)
 
-Conv-LSTM has the lowest MAE in all three UrbanFlood24 locations, while the
-Transformer has the highest CSI in all three. This is a useful deployment
-tradeoff rather than a single universal winner.
+![Physical diagnostics](results/external_leaderboard_v2/figures/larno_ukea_ukea_physical_diagnostics.png)
 
-![Cross-dataset generalization](docs/figures/cross_dataset_generalization.png)
+![Event-level robustness](results/external_leaderboard_v2/figures/larno_ukea_ukea_event_robustness.png)
 
-![UKEA forecast-horizon curves](docs/figures/larno_ukea_ukea_horizon_curves.png)
+![Depth-stratified errors](results/external_leaderboard_v2/figures/larno_ukea_ukea_depth_stratified_errors.png)
 
-The representative UKEA test sample below is selected by target change, not by
-model error. At `+60 min`, Conv-LSTM reduces sample MAE from `46.24 cm` to
-`27.83 cm` and raises flood-extent CSI from `0.390` to `0.891`.
+The qualitative sample below is selected by target change, not by any model's
+error. It provides a common spatial view of the six seed-42 checkpoints at
+`+60 min`; aggregate claims still come from all events and all five seeds.
 
-![UKEA spatial forecast](docs/figures/larno_ukea_ukea_spatial_forecast.png)
+![Spatial forecast comparison](results/external_leaderboard_v2/figures/larno_ukea_ukea_spatial_forecast.png)
 
-![UKEA spatial error](docs/figures/larno_ukea_ukea_spatial_error.png)
+![Spatial error comparison](results/external_leaderboard_v2/figures/larno_ukea_ukea_spatial_error.png)
+
+See the [complete Batch 5 analysis](EXTERNAL_STRONG_BASELINE_LEADERBOARD.md),
+[machine-generated benchmark report](results/external_leaderboard_v2/EXTERNAL_PHYSICAL_BENCHMARK.md),
+and [validation-only learning-rate audit](results/external_leaderboard_v2/lr_selection/LEARNING_RATE_SELECTION.md).
+
+The earlier UrbanFlood24 experiment remains a three-model, three-seed sparse
+pilot across three locations. It is retained in
+[EXTERNAL_PHYSICAL_DATA_EXPERIMENTS.md](EXTERNAL_PHYSICAL_DATA_EXPERIMENTS.md)
+and is not mixed into the new six-model UKEA ranking. Upgrading UrbanFlood24 to
+the same six-model, five-seed protocol is the next external-data milestone.
 
 ## Historical Synthetic Result Snapshot
 

@@ -8,10 +8,23 @@ import numpy as np
 import torch
 
 from .external_data import ExternalFloodDataset, discover_larno_ukea, discover_urbanflood24
-from .external_models import build_external_model_from_checkpoint
-from .model_variants import model_display_name
+from .external_models import build_external_model_from_checkpoint, external_model_display_name
 from .summarize_external import DATASET_LABELS, MODEL_COLORS, MODEL_ORDER
 from .utils import ensure_dir, save_json
+
+
+QUALITATIVE_LABELS = {
+    "convlstm": "Conv-LSTM",
+    "convlstm_attention": "Attention",
+    "cnn_temporal_transformer": "CNN-Transformer",
+    "urnn_lite": "U-RNN Lite",
+    "fno2d_history": "FNO2D-History",
+    "simvp_lite": "SimVP Lite",
+}
+
+
+def _qualitative_label(model_type: str) -> str:
+    return QUALITATIVE_LABELS.get(model_type, external_model_display_name(model_type))
 
 
 def _load_checkpoints(root: Path, seed: int) -> dict[str, dict]:
@@ -61,7 +74,7 @@ def _build_test_dataset(checkpoint: dict) -> ExternalFloodDataset:
         patch_size=int(args.get("patch_size", 64)),
         patch_stride=int(args.get("eval_patch_stride", 64)),
         max_samples_per_event=evaluation_cap,
-        seed=int(checkpoint["seed"]),
+        seed=int(checkpoint["split_seed"]),
         depth_scale_m=float(checkpoint["depth_scale_m"]),
         rain_scale_mm_5min=float(checkpoint["rain_scale_mm_5min"]),
     )
@@ -127,7 +140,9 @@ def _plot_forecasts(
     title: str,
     path: Path,
 ) -> None:
-    labels = ["Last observation", "Target", "Persistence"] + [model_display_name(model) for model in MODEL_ORDER]
+    labels = ["Last observation", "Target", "Persistence"] + [
+        _qualitative_label(model) for model in MODEL_ORDER
+    ]
     keys = ["observation", "target", "persistence", *MODEL_ORDER]
     maximum = max(float(np.percentile(fields[key], 99.5)) for key in keys)
     maximum = max(maximum, threshold * 1.2, 1e-3)
@@ -155,16 +170,19 @@ def _plot_long_horizon_errors(
     path: Path,
 ) -> None:
     keys = ["persistence", *MODEL_ORDER]
-    labels = ["Persistence", *[model_display_name(model) for model in MODEL_ORDER]]
+    labels = ["Persistence", *[_qualitative_label(model) for model in MODEL_ORDER]]
     errors = {key: np.abs(predictions[key][-1] - target[-1]) for key in keys}
     maximum = max(float(np.percentile(error[mask], 99.0)) for error in errors.values())
     maximum = max(maximum, 1e-4)
-    figure, axes = plt.subplots(1, len(keys), figsize=(13, 3.6), constrained_layout=True)
+    figure, axes = plt.subplots(1, len(keys), figsize=(17, 4.0), constrained_layout=True)
     image = None
     for axis, key, label in zip(axes, keys, labels):
         metric = _sample_metrics(predictions[key][-1], target[-1], mask, threshold)
         image = axis.imshow(errors[key], cmap="magma", vmin=0.0, vmax=maximum)
-        axis.set_title(f"{label}\nMAE {metric['mae_cm']:.2f} cm | CSI {metric['csi']:.3f}")
+        axis.set_title(
+            f"{label}\nMAE {metric['mae_cm']:.2f} cm\nCSI {metric['csi']:.3f}",
+            fontsize=9,
+        )
         axis.set_xticks([])
         axis.set_yticks([])
     figure.colorbar(image, ax=axes, shrink=0.78, label="Absolute error (m)")
@@ -182,7 +200,7 @@ def _plot_horizon_error_matrix(
     path: Path,
 ) -> None:
     keys = ["persistence", *MODEL_ORDER]
-    labels = ["Persistence", *[model_display_name(model) for model in MODEL_ORDER]]
+    labels = ["Persistence", *[_qualitative_label(model) for model in MODEL_ORDER]]
     errors = np.stack([np.abs(predictions[key] - target) for key in keys], axis=0)
     maximum = max(float(np.percentile(errors[:, horizon, mask], 99.0)) for horizon in range(target.shape[0]))
     maximum = max(maximum, 1e-4)
